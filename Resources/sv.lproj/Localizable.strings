@@ -1,0 +1,11 @@
+/* Capture window */
+"capture.placeholder" = "Skriv…";
+"capture.editor.label" = "Anteckning";
+"capture.status.new" = "Ny anteckning";
+"capture.status.saveFailed" = "Kunde inte spara";
+"capture.copy.help" = "Kopiera anteckningen (⇧⌘C)";
+"capture.copy.label" = "Kopiera anteckningen";
+
+/* Menu bar */
+"menu.new" = "Ny anteckning";
+"menu.quit" = "Avsluta Jot";

@@ -1,0 +1,11 @@
+/* Capture window */
+"capture.placeholder" = "Type…";
+"capture.editor.label" = "Note";
+"capture.status.new" = "New note";
+"capture.status.saveFailed" = "Couldn't save";
+"capture.copy.help" = "Copy note (⇧⌘C)";
+"capture.copy.label" = "Copy note";
+
+/* Menu bar */
+"menu.new" = "New Note";
+"menu.quit" = "Quit Jot";
