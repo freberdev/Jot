@@ -17,9 +17,19 @@ final class AppModel {
     /// True while an earlier note is being continued, false for a note started in this session.
     private(set) var isContinuing = false
 
+    /// The global shortcut that opens Jot.
+    private(set) var shortcut: Shortcut
+    /// Something the user should know about the shortcut they just chose, or nil.
+    var shortcutMessage: String?
+    /// True until the capture window has been closed for the first time after the first launch.
+    private(set) var showsWelcome = false
+
     let store: NoteStore
     let editor: Editor
     let history: HistoryModel
+
+    @ObservationIgnored private let preferences = Preferences()
+    @ObservationIgnored private var settingsWindow: SettingsWindowController?
 
     @ObservationIgnored private var panel: CapturePanelController?
     @ObservationIgnored private let hotKey = HotKey()
@@ -33,6 +43,7 @@ final class AppModel {
         store = NoteStore(files: NoteFiles(directory: directory))
         editor = Editor(store: store, debouncer: TimerDebouncer())
         history = HistoryModel(store: store)
+        shortcut = preferences.shortcut
     }
 
     /// Called once the app has launched: builds the panel and claims the shortcut.
@@ -46,7 +57,25 @@ final class AppModel {
         panel = controller
 
         hotKey.onPressed = { [weak self] in self?.hotKeyPressed() }
-        hotKey.register(keyCode: 38 /* J */, carbonModifiers: 0x0100 | 0x0200 /* ⌘⇧ */)
+        resumeHotKey()
+
+        settingsWindow = SettingsWindowController { [unowned self] in SettingsView(model: self) }
+
+        enableLoginItemOnce()
+        if !preferences.hasShownWelcome {
+            preferences.hasShownWelcome = true
+            showsWelcome = true
+            newNote()
+        }
+    }
+
+    /// Jot is of little use if the shortcut stops working after a restart, so "open at login"
+    /// is turned on the first time Jot runs from the Applications folder. Only ever once:
+    /// after that the choice belongs to the user.
+    private func enableLoginItemOnce() {
+        guard LoginItem.isInstalled, !preferences.didAutoEnableLoginItem else { return }
+        preferences.didAutoEnableLoginItem = true
+        try? LoginItem.setEnabled(true)
     }
 
     // MARK: Opening and closing
@@ -114,6 +143,61 @@ final class AppModel {
     func closePanel() {
         editor.leave()
         panel?.hide()
+        showsWelcome = false
+    }
+
+    // MARK: Settings
+
+    func openSettings() {
+        closePanel()
+        settingsWindow?.show()
+    }
+
+    /// The shortcut as the user sees it, for example "⇧⌘J".
+    var shortcutDisplay: String {
+        shortcut.modifierSymbols + KeyNames.name(for: shortcut.keyCode)
+    }
+
+    func suspendHotKey() {
+        hotKey.unregister()
+    }
+
+    func resumeHotKey() {
+        hotKey.register(keyCode: shortcut.keyCode, carbonModifiers: shortcut.carbonModifiers)
+    }
+
+    /// Switches to a new shortcut. If the system refuses it, the previous one stays.
+    func setShortcut(_ new: Shortcut) {
+        if hotKey.register(keyCode: new.keyCode, carbonModifiers: new.carbonModifiers) {
+            shortcut = new
+            preferences.shortcut = new
+            shortcutMessage = nil
+        } else {
+            resumeHotKey()
+            shortcutMessage = L("settings.shortcut.refused")
+        }
+    }
+
+    var notesFolderDisplay: String {
+        (store.directory.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    func revealNotesFolder() {
+        try? FileManager.default.createDirectory(
+            at: store.directory, withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        NSWorkspace.shared.open(store.directory)
+    }
+
+    func clearHistory() {
+        do {
+            try store.deleteAll()
+            editor.forget(id: editor.noteID)
+            isContinuing = false
+            history.reset()
+        } catch {
+            NSSound.beep()
+        }
     }
 
     /// Saves whatever is being written. Called when the app quits or the Mac goes to sleep.
@@ -164,7 +248,7 @@ final class AppModel {
         case .copySelected: if let note = history.selected { copy(note) }
         case .deleteSelected: deleteSelected()
         case .undoDelete: undoDelete()
-        case .settings: break
+        case .settings: openSettings()
         }
     }
 

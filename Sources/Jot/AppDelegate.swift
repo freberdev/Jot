@@ -16,6 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self, selector: #selector(willSleep), name: NSWorkspace.willSleepNotification, object: nil)
     }
 
+    /// Opening Jot again while it is running, from Spotlight or Finder, shows the capture window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        model.newNote()
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         model.saveNow()
     }

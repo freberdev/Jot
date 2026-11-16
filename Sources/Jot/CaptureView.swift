@@ -41,7 +41,9 @@ struct CaptureView: View {
                     .id(editor.noteID)
 
                 if editor.text.isEmpty {
-                    Text(L("capture.placeholder"))
+                    Text(model.showsWelcome
+                        ? L("capture.placeholder.welcome", model.shortcutDisplay)
+                        : L("capture.placeholder"))
                         .font(.system(size: 15))
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 5)

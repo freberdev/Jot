@@ -7,7 +7,7 @@
 "capture.copy.label" = "Kopiera anteckningen";
 
 /* Menu bar */
-"menu.new" = "Ny anteckning";
+"menu.new" = "Ny anteckning  %@";
 "menu.quit" = "Avsluta Jot";
 
 /* History */
@@ -20,3 +20,27 @@
 "history.row.copy" = "Kopiera";
 "history.row.delete" = "Radera";
 "menu.history" = "Historik";
+
+/* First launch */
+"capture.placeholder.welcome" = "Skriv här. %@ öppnar Jot varifrån som helst.";
+
+/* Settings */
+"menu.settings" = "Inställningar…";
+"settings.title" = "Inställningar för Jot";
+"settings.shortcut.label" = "Öppna Jot";
+"settings.shortcut.change" = "Byt kortkommando";
+"settings.shortcut.recording" = "Tryck ett kortkommando…";
+"settings.shortcut.hint" = "Klicka på kortkommandot och tryck sedan det nya. Om det inte verkar göra något kan en annan app använda det. Välj då ett annat.";
+"settings.shortcut.needsModifier" = "Ett kortkommando behöver ⌘ eller ⌃. Bara Alternativ skulle krocka med tecken som @ och |.";
+"settings.shortcut.refused" = "macOS godtog inte kortkommandot. Det förra gäller fortfarande.";
+"settings.login.label" = "Öppna Jot vid inloggning";
+"settings.login.failed" = "Det gick inte att ändra inloggningsobjektet. Du kan ändra det under Systeminställningar > Allmänt > Inloggningsobjekt.";
+"settings.storage.title" = "Lagring";
+"settings.storage.reveal" = "Visa i Finder";
+"settings.storage.privacy" = "Anteckningarna lagras bara på den här Macen, en fil per anteckning. Jot skickar aldrig något någonstans.";
+"settings.clear.button" = "Rensa historik…";
+"settings.clear.title" = "Radera alla anteckningar?";
+"settings.clear.message" = "Alla %ld anteckningar raderas från den här Macen. Det går inte att ångra.";
+"settings.clear.confirm" = "Radera alla anteckningar";
+"settings.clear.cancel" = "Avbryt";
+"settings.storage.folder" = "Mapp för anteckningar";

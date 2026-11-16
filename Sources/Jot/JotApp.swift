@@ -1,3 +1,4 @@
+import JotCore
 import SwiftUI
 
 @main
@@ -6,10 +7,20 @@ struct JotApp: App {
 
     var body: some Scene {
         MenuBarExtra("Jot", systemImage: "note.text") {
-            Button(L("menu.new")) { delegate.model.newNote() }
-            Button(L("menu.history")) { delegate.model.showHistory() }
-            Divider()
-            Button(L("menu.quit")) { NSApplication.shared.terminate(nil) }
+            MenuContent(model: delegate.model)
         }
+    }
+}
+
+private struct MenuContent: View {
+    let model: AppModel
+
+    var body: some View {
+        Button(L("menu.new", model.shortcutDisplay)) { model.newNote() }
+        Button(L("menu.history")) { model.showHistory() }
+        Divider()
+        Button(L("menu.settings")) { model.openSettings() }
+        Divider()
+        Button(L("menu.quit")) { NSApplication.shared.terminate(nil) }
     }
 }

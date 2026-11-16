@@ -7,7 +7,7 @@
 "capture.copy.label" = "Copy note";
 
 /* Menu bar */
-"menu.new" = "New Note";
+"menu.new" = "New Note  %@";
 "menu.quit" = "Quit Jot";
 
 /* History */
@@ -20,3 +20,27 @@
 "history.row.copy" = "Copy";
 "history.row.delete" = "Delete";
 "menu.history" = "History";
+
+/* First launch */
+"capture.placeholder.welcome" = "Type here. %@ opens Jot from anywhere.";
+
+/* Settings */
+"menu.settings" = "Settings…";
+"settings.title" = "Jot Settings";
+"settings.shortcut.label" = "Open Jot";
+"settings.shortcut.change" = "Change shortcut";
+"settings.shortcut.recording" = "Press a shortcut…";
+"settings.shortcut.hint" = "Click the shortcut, then press the new one. If it doesn't seem to do anything, another app may be using it. Pick a different one.";
+"settings.shortcut.needsModifier" = "A shortcut needs ⌘ or ⌃. Option alone would get in the way of typing characters such as @ and |.";
+"settings.shortcut.refused" = "macOS didn't accept that shortcut. The previous one is still in use.";
+"settings.login.label" = "Open Jot at login";
+"settings.login.failed" = "Couldn't change the login item. You can set it under System Settings > General > Login Items.";
+"settings.storage.title" = "Storage";
+"settings.storage.reveal" = "Show in Finder";
+"settings.storage.privacy" = "Notes are stored only on this Mac, as one file each. Jot never sends anything anywhere.";
+"settings.clear.button" = "Clear History…";
+"settings.clear.title" = "Delete all notes?";
+"settings.clear.message" = "This deletes all %ld notes from this Mac. It can't be undone.";
+"settings.clear.confirm" = "Delete All Notes";
+"settings.clear.cancel" = "Cancel";
+"settings.storage.folder" = "Notes folder";
