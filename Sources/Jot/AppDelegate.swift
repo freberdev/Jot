@@ -5,11 +5,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Notes often hold commands and code. Keep "--" and straight quotes exactly as typed.
-        // Set as app preferences, because the user's system-wide setting outranks registered defaults.
-        UserDefaults.standard.set(false, forKey: "NSAutomaticQuoteSubstitutionEnabled")
-        UserDefaults.standard.set(false, forKey: "NSAutomaticDashSubstitutionEnabled")
-
         // "-appearance dark" or "-appearance light" on the command line overrides the system, for development.
         switch UserDefaults.standard.string(forKey: "appearance") {
         case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)

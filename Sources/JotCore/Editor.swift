@@ -17,6 +17,9 @@ public final class Editor {
     }
 
     public private(set) var noteID = UUID()
+    /// Goes up each time the text is replaced by something other than typing: a new note,
+    /// an opened note, a restored one. A text view uses it to know when to reload its contents.
+    public private(set) var contentRevision = 0
     /// The note as it was last written, or `nil` if nothing has been saved yet.
     public private(set) var savedNote: Note?
     /// True after a save that did not reach the disk. The text is kept and the next save retries.
@@ -115,5 +118,6 @@ public final class Editor {
         noteID = id
         self.savedNote = savedNote
         self.text = text
+        contentRevision += 1
     }
 }

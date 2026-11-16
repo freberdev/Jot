@@ -288,6 +288,23 @@ import Testing
         #expect(!editor.saveFailed)
     }
 
+    @Test func onlyReplacingTheTextFromOutsideBumpsTheRevision() throws {
+        let existing = makeNote("existing", at: 5)
+        try store.save(existing)
+        let editor = makeEditor()
+        let start = editor.contentRevision
+
+        editor.text = "typed"
+        editor.text = "typed more"
+        editor.flush()
+        #expect(editor.contentRevision == start)
+
+        editor.open(existing)
+        #expect(editor.contentRevision == start + 1)
+        editor.startNew()
+        #expect(editor.contentRevision == start + 2)
+    }
+
     @Test func timerDebouncerFiresOnceAfterDelay() async throws {
         let debouncer = TimerDebouncer(delay: .milliseconds(50))
         var fired: [String] = []

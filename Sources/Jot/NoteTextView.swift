@@ -1,0 +1,83 @@
+import AppKit
+import JotCore
+import SwiftUI
+
+/// The writing surface: a plain-text `NSTextView`.
+///
+/// SwiftUI's `TextEditor` hands the whole text back and forth on every key press, which makes
+/// typing lag once a note grows large. Here the text view owns the text while the user types,
+/// and is only reloaded when the editor replaces the text from outside.
+struct NoteTextView: NSViewRepresentable {
+    let editor: Editor
+
+    static let font = NSFont.systemFont(ofSize: 15)
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(editor: editor)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        // The panel's title bar is hidden; do not leave room for it above the text.
+        scrollView.automaticallyAdjustsContentInsets = false
+
+        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        textView.delegate = context.coordinator
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = true
+        textView.drawsBackground = false
+        textView.font = Self.font
+        textView.textColor = .labelColor
+        textView.textContainerInset = .zero
+        // Notes often hold commands and code. Keep "--" and straight quotes exactly as typed.
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineSpacing = 3
+        textView.defaultParagraphStyle = paragraph
+        textView.typingAttributes = [
+            .font: Self.font, .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph,
+        ]
+        textView.setAccessibilityLabel(L("capture.editor.label"))
+
+        context.coordinator.load(into: textView)
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView,
+              context.coordinator.loadedRevision != editor.contentRevision
+        else { return }
+        context.coordinator.load(into: textView)
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        private let editor: Editor
+        private(set) var loadedRevision = -1
+
+        init(editor: Editor) {
+            self.editor = editor
+        }
+
+        /// Shows the editor's text, with the insertion point at the end and a clean undo history,
+        /// so that undo can never bring back the text of another note.
+        func load(into textView: NSTextView) {
+            loadedRevision = editor.contentRevision
+            textView.string = editor.text
+            textView.undoManager?.removeAllActions()
+            let end = (textView.string as NSString).length
+            textView.setSelectedRange(NSRange(location: end, length: 0))
+            textView.scrollRangeToVisible(NSRange(location: end, length: 0))
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            editor.text = textView.string
+        }
+    }
+}

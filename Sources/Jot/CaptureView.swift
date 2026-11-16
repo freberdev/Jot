@@ -25,20 +25,12 @@ struct CaptureRootView: View {
 /// Writing mode: all text, and one quiet line of status and controls underneath.
 struct CaptureView: View {
     let model: AppModel
-    @Bindable var editor: Editor
-    @FocusState private var editorFocused: Bool
+    let editor: Editor
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                TextEditor(text: $editor.text)
-                    .font(.system(size: 15))
-                    .lineSpacing(3)
-                    .scrollContentBackground(.hidden)
-                    .focused($editorFocused)
-                    .accessibilityLabel(L("capture.editor.label"))
-                    // A fresh text view per note, so undo can never bring back another note's text.
-                    .id(editor.noteID)
+                NoteTextView(editor: editor)
 
                 if editor.text.isEmpty {
                     Text(model.showsWelcome
@@ -56,8 +48,6 @@ struct CaptureView: View {
 
             footer
         }
-        .onAppear { editorFocused = true }
-        .onChange(of: editor.noteID) { editorFocused = true }
     }
 
     private var footer: some View {
