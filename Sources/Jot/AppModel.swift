@@ -23,6 +23,8 @@ final class AppModel {
     var shortcutMessage: String?
     /// True until the capture window has been closed for the first time after the first launch.
     private(set) var showsWelcome = false
+    /// True while the settings window is waiting for the user to press a new shortcut.
+    private(set) var isRecordingShortcut = false
 
     let store: NoteStore
     let editor: Editor
@@ -30,6 +32,7 @@ final class AppModel {
 
     @ObservationIgnored private let preferences = Preferences()
     @ObservationIgnored private var settingsWindow: SettingsWindowController?
+    @ObservationIgnored private var shortcutMonitor: Any?
 
     @ObservationIgnored private var panel: CapturePanelController?
     @ObservationIgnored private let hotKey = HotKey()
@@ -59,7 +62,9 @@ final class AppModel {
         hotKey.onPressed = { [weak self] in self?.hotKeyPressed() }
         resumeHotKey()
 
-        settingsWindow = SettingsWindowController { [unowned self] in SettingsView(model: self) }
+        let settings = SettingsWindowController { [unowned self] in SettingsView(model: self) }
+        settings.onInactive = { [weak self] in self?.stopRecordingShortcut() }
+        settingsWindow = settings
 
         enableLoginItemOnce()
         if !preferences.hasShownWelcome {
@@ -103,6 +108,8 @@ final class AppModel {
 
     func showHistory() {
         editor.flush()
+        // Notes may have been added, removed or restored outside Jot since the list was read.
+        store.reloadIfChanged()
         history.reset()
         mode = .history
         panel?.show(focusing: .search)
@@ -142,7 +149,13 @@ final class AppModel {
 
     func closePanel() {
         editor.leave()
+        if editor.saveFailed {
+            // The window holds the only copy of the text. Keep it, and its warning, on screen.
+            NSSound.beep()
+            return
+        }
         panel?.hide()
+        history.forgetDeleted()
         showsWelcome = false
     }
 
@@ -150,6 +163,7 @@ final class AppModel {
 
     func openSettings() {
         closePanel()
+        guard !editor.saveFailed else { return }
         settingsWindow?.show()
     }
 
@@ -158,16 +172,50 @@ final class AppModel {
         shortcut.modifierSymbols + KeyNames.name(for: shortcut.keyCode)
     }
 
-    func suspendHotKey() {
-        hotKey.unregister()
-    }
-
-    func resumeHotKey() {
+    private func resumeHotKey() {
         hotKey.register(keyCode: shortcut.keyCode, carbonModifiers: shortcut.carbonModifiers)
     }
 
+    /// Waits for the next key combination and makes it the shortcut. Escape cancels.
+    func startRecordingShortcut() {
+        guard !isRecordingShortcut else { return }
+        isRecordingShortcut = true
+        shortcutMessage = nil
+        // The current shortcut must not fire while the user is choosing a new one.
+        hotKey.unregister()
+        shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.recordShortcut(from: event)
+            return nil
+        }
+    }
+
+    /// Ends recording and puts the shortcut back in force. Also called when the settings
+    /// window closes or loses focus, so the shortcut can never be left switched off.
+    func stopRecordingShortcut() {
+        guard isRecordingShortcut else { return }
+        isRecordingShortcut = false
+        if let shortcutMonitor { NSEvent.removeMonitor(shortcutMonitor) }
+        shortcutMonitor = nil
+        resumeHotKey()
+    }
+
+    private func recordShortcut(from event: NSEvent) {
+        let modifiers = KeyModifiers(event.modifierFlags)
+        if event.keyCode == 53, modifiers.isEmpty {
+            stopRecordingShortcut()
+            return
+        }
+        let candidate = Shortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers)
+        guard candidate.isValid else {
+            shortcutMessage = L("settings.shortcut.needsModifier")
+            return
+        }
+        stopRecordingShortcut()
+        setShortcut(candidate)
+    }
+
     /// Switches to a new shortcut. If the system refuses it, the previous one stays.
-    func setShortcut(_ new: Shortcut) {
+    private func setShortcut(_ new: Shortcut) {
         if hotKey.register(keyCode: new.keyCode, carbonModifiers: new.carbonModifiers) {
             shortcut = new
             preferences.shortcut = new
@@ -224,13 +272,16 @@ final class AppModel {
         if let textView = panel?.panel.firstResponder as? NSTextView, textView.hasMarkedText() {
             return false
         }
-        let press = KeyPress(keyCode: event.keyCode, modifiers: KeyModifiers(event.modifierFlags))
+        let press = JotCore.KeyPress(event)
         guard let command = KeyRouter.command(for: press, in: keyContext) else {
             // Typing while the list has focus continues the search.
             if KeyRouter.returnsFocusToSearch(press, in: keyContext) { history.focus = .search }
             return false
         }
-        perform(command)
+        // A held key is swallowed rather than repeated, except for moving through the list.
+        if !event.isARepeat || KeyRouter.repeatsWhenHeld(command) {
+            perform(command)
+        }
         return true
     }
 
@@ -280,6 +331,22 @@ final class AppModel {
             self?.didCopy = false
             self?.copiedNoteID = nil
         }
+    }
+}
+
+extension JotCore.KeyPress {
+    /// The key and modifiers of an event, with the character the key types on the current layout.
+    init(_ event: NSEvent) {
+        // With Command held, most non-Latin layouts report a Latin character in `characters`.
+        // Control and Option change `characters` to something else, so the unmodified one is tried too.
+        let candidates = [event.characters, event.charactersIgnoringModifiers]
+        let character = candidates.compactMap { $0 }.first { text in
+            text.unicodeScalars.count == 1 && text.unicodeScalars.allSatisfy { (0x21...0x7E).contains($0.value) }
+        }
+        self.init(
+            keyCode: event.keyCode,
+            modifiers: KeyModifiers(event.modifierFlags),
+            character: character ?? KeyRouter.usCharacters[event.keyCode])
     }
 }
 

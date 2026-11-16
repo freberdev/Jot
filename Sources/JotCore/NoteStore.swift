@@ -11,6 +11,8 @@ public final class NoteStore {
     public private(set) var notes: [Note] = []
 
     private let files: NoteFiles
+    /// The directory's modification date as of the last time the list and the disk agreed.
+    private var lastSeenChange: Date?
 
     public init(files: NoteFiles) {
         self.files = files
@@ -20,7 +22,18 @@ public final class NoteStore {
 
     /// Replaces the list with what is on disk.
     public func load() {
+        let change = files.directoryModificationDate()
         notes = files.loadAll().sorted(by: Self.isOrderedBefore)
+        lastSeenChange = change
+    }
+
+    /// Reloads if files have been added, removed or replaced by something other than this store,
+    /// for example in Finder or by restoring a backup. Returns true if it reloaded.
+    @discardableResult
+    public func reloadIfChanged() -> Bool {
+        guard files.directoryModificationDate() != lastSeenChange else { return false }
+        load()
+        return true
     }
 
     public func note(id: UUID) -> Note? {
@@ -30,6 +43,7 @@ public final class NoteStore {
     /// Writes the note and inserts it, or replaces the note with the same id.
     public func save(_ note: Note) throws {
         try files.write(note)
+        lastSeenChange = files.directoryModificationDate()
         notes.removeAll { $0.id == note.id }
         let index = notes.firstIndex { Self.isOrderedBefore(note, $0) } ?? notes.endIndex
         notes.insert(note, at: index)
@@ -40,13 +54,14 @@ public final class NoteStore {
     public func delete(id: UUID) throws -> Note? {
         guard let note = note(id: id) else { return nil }
         try files.delete(id: id)
+        lastSeenChange = files.directoryModificationDate()
         notes.removeAll { $0.id == id }
         return note
     }
 
     public func deleteAll() throws {
+        defer { load() }
         try files.deleteAll()
-        notes = []
     }
 
     /// Newest change first. Ties are broken by creation time and then by id,

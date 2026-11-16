@@ -19,10 +19,29 @@ setting() { # setting <ENV_VALUE> <file>
 
 IDENTITY="$(setting "${JOT_RELEASE_IDENTITY:-}" .release-identity)"
 PROFILE="$(setting "${JOT_NOTARY_PROFILE:-}" .notary-profile)"
-if [ -z "$IDENTITY" ]; then
+if [ -z "$IDENTITY" ] || [ "$IDENTITY" = "-" ]; then
     echo "No release identity. Set JOT_RELEASE_IDENTITY or create .release-identity." >&2
     exit 1
 fi
+
+# Sends a file to Apple and waits. Stops the script unless the answer is "Accepted".
+notarize() {
+    local output id
+    if ! output="$(xcrun notarytool submit "$1" --keychain-profile "$PROFILE" --wait 2>&1)"; then
+        echo "$output" >&2
+        exit 1
+    fi
+    if ! grep -q "status: Accepted" <<<"$output"; then
+        echo "$output" >&2
+        id="$(awk '$1 == "id:" { print $2; exit }' <<<"$output")"
+        if [ -n "$id" ]; then
+            xcrun notarytool log "$id" --keychain-profile "$PROFILE" >&2 || true
+        fi
+        echo "Apple did not accept $1" >&2
+        exit 1
+    fi
+    echo "Notarized $1"
+}
 
 JOT_SIGN_IDENTITY="$IDENTITY" scripts/build-app.sh --universal
 
@@ -30,6 +49,15 @@ VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resour
 DMG="build/Jot-$VERSION.dmg"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
+
+# The app gets its own ticket, so it opens without a network connection
+# after it has been copied out of the disk image.
+if [ -n "$PROFILE" ]; then
+    ditto -c -k --keepParent build/Jot.app "$STAGE/Jot.zip"
+    notarize "$STAGE/Jot.zip"
+    rm "$STAGE/Jot.zip"
+    xcrun stapler staple build/Jot.app
+fi
 
 cp -R build/Jot.app "$STAGE/Jot.app"
 ln -s /Applications "$STAGE/Applications"
@@ -42,6 +70,6 @@ if [ -z "$PROFILE" ]; then
     exit 0
 fi
 
-xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
+notarize "$DMG"
 xcrun stapler staple "$DMG"
 echo "Built $DMG (signed and notarized)"

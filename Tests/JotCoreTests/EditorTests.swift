@@ -242,6 +242,52 @@ import Testing
         #expect(editor.noteID == id)
     }
 
+    @Test func reopeningTheEmptiedNoteRestoresIt() throws {
+        let editor = makeEditor()
+        editor.text = "wiped by accident"
+        editor.flush()
+        let note = try #require(store.notes.first)
+        editor.text = ""
+        editor.flush()
+
+        editor.open(note)
+
+        #expect(editor.text == "wiped by accident")
+        #expect(temp.fileNames().count == 1)
+        editor.leave()
+        #expect(store.notes.map(\.text) == ["wiped by accident"])
+        #expect(temp.fileNames().count == 1)
+    }
+
+    @Test func reopeningTheCurrentNoteKeepsWhatIsInTheEditor() throws {
+        let editor = makeEditor()
+        editor.text = "first version"
+        editor.flush()
+        let stale = try #require(store.notes.first)
+        editor.text = "second version"
+
+        editor.open(stale)
+
+        #expect(editor.text == "second version")
+        #expect(store.notes.map(\.text) == ["second version"])
+    }
+
+    @Test func saveFailedClearsWhenThereIsNothingLeftToSave() throws {
+        let editor = makeEditor()
+        editor.text = "seed"
+        editor.flush()
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: temp.notes.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: temp.notes.path) }
+        editor.text = "seed, changed"
+        editor.flush()
+        #expect(editor.saveFailed)
+
+        editor.text = "seed"
+        editor.flush()
+
+        #expect(!editor.saveFailed)
+    }
+
     @Test func timerDebouncerFiresOnceAfterDelay() async throws {
         let debouncer = TimerDebouncer(delay: .milliseconds(50))
         var fired: [String] = []

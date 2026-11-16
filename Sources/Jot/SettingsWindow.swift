@@ -4,7 +4,10 @@ import SwiftUI
 /// The settings window. Jot has no Dock icon, so the window is created and brought forward by hand;
 /// SwiftUI's own Settings scene tends to open behind other apps in that situation.
 @MainActor
-final class SettingsWindowController {
+final class SettingsWindowController: NSObject, NSWindowDelegate {
+    /// Called when the window closes or stops being the key window.
+    var onInactive: (() -> Void)?
+
     private var window: NSWindow?
     private let makeContent: () -> AnyView
 
@@ -18,14 +21,26 @@ final class SettingsWindowController {
             window.title = L("settings.title")
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.center()
             self.window = window
         }
         // Jot is not the active app when this is called from the capture panel or the menu bar.
-        // The cooperative `activate()` is ignored in that situation and leaves the window
-        // inactive behind the current app, so the older, insistent call is used.
-        (NSApp as InsistentActivation).activate(ignoringOtherApps: true)
+        NSApp.activateInsistently()
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowDidResignKey(_ notification: Notification) { onInactive?() }
+    func windowWillClose(_ notification: Notification) { onInactive?() }
+}
+
+extension NSApplication {
+    /// Makes Jot the active app even when another app is in front.
+    ///
+    /// The cooperative `activate()` is only a request, and it is ignored when Jot is not already
+    /// active, which is always the case for an app that lives in the menu bar.
+    func activateInsistently() {
+        (self as InsistentActivation).activate(ignoringOtherApps: true)
     }
 }
 

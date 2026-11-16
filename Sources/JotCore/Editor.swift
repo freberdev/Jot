@@ -44,6 +44,17 @@ public final class Editor {
     /// Finishes the current note and continues an existing one.
     /// If the current note could not be saved it stays, since this is the only copy of its text.
     public func open(_ note: Note) {
+        if note.id == noteID {
+            // Already the current note. If its text has been wiped, this is how the user gets it
+            // back, so the saved text is restored instead of the note being removed as emptied.
+            if isBlank {
+                debouncer.cancel()
+                replace(id: note.id, savedNote: savedNote ?? note, text: note.text)
+            } else {
+                flush()
+            }
+            return
+        }
         leave()
         guard !saveFailed else { return }
         replace(id: note.id, savedNote: note, text: note.text)
@@ -82,7 +93,11 @@ public final class Editor {
     }
 
     private func save() {
-        guard !isBlank, text != savedNote?.text else { return }
+        guard !isBlank, text != savedNote?.text else {
+            // Nothing that is not already on disk.
+            saveFailed = false
+            return
+        }
         let moment = now()
         let note = Note(id: noteID, text: text, created: savedNote?.created ?? moment, modified: moment)
         do {

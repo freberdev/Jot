@@ -98,6 +98,48 @@ import Testing
         #expect(store.notes.map(\.text) == ["recent", "written with an earlier clock"])
     }
 
+    @Test func reloadIfChangedPicksUpFilesAddedElsewhere() throws {
+        let store = loadedStore()
+        try store.save(makeNote("mine", at: 0))
+
+        try files.write(makeNote("restored from a backup", at: 10))
+
+        #expect(store.reloadIfChanged())
+        #expect(store.notes.map(\.text) == ["restored from a backup", "mine"])
+    }
+
+    @Test func reloadIfChangedDropsFilesRemovedElsewhere() throws {
+        let store = loadedStore()
+        let note = makeNote("deleted in Finder")
+        try store.save(note)
+
+        try files.delete(id: note.id)
+
+        #expect(store.reloadIfChanged())
+        #expect(store.notes.isEmpty)
+    }
+
+    @Test func reloadIfChangedDoesNothingAfterTheStoresOwnChanges() throws {
+        let store = loadedStore()
+        let note = makeNote("a")
+        try store.save(note)
+        try store.save(makeNote("b", at: 1))
+        try store.delete(id: note.id)
+
+        #expect(!store.reloadIfChanged())
+        #expect(store.notes.map(\.text) == ["b"])
+    }
+
+    @Test func reloadIfChangedNoticesAFolderThatAppearsLater() throws {
+        let store = loadedStore()
+        #expect(!store.reloadIfChanged())
+
+        try files.write(makeNote("first file ever"))
+
+        #expect(store.reloadIfChanged())
+        #expect(store.notes.count == 1)
+    }
+
     @Test func failedSaveLeavesTheListUntouched() throws {
         let store = loadedStore()
         try store.save(makeNote("kept"))

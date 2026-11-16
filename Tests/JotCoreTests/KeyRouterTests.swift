@@ -8,8 +8,42 @@ import Testing
     static let c: UInt16 = 8, f: UInt16 = 3, n: UInt16 = 45, q: UInt16 = 12
     static let w: UInt16 = 13, z: UInt16 = 6, comma: UInt16 = 43, a: UInt16 = 0
 
+    /// The character each of these keys produces on a US keyboard.
+    static let usCharacters: [UInt16: String] = [
+        c: "c", f: "f", n: "n", q: "q", w: "w", z: "z", comma: ",", a: "a",
+    ]
+
+    static func press(_ key: UInt16, _ modifiers: KeyModifiers = []) -> KeyPress {
+        KeyPress(keyCode: key, modifiers: modifiers, character: usCharacters[key])
+    }
+
     func route(_ key: UInt16, _ modifiers: KeyModifiers = [], in context: KeyContext) -> KeyCommand? {
-        KeyRouter.command(for: KeyPress(keyCode: key, modifiers: modifiers), in: context)
+        KeyRouter.command(for: Self.press(key, modifiers), in: context)
+    }
+
+    @Test func lettersFollowTheKeyboardLayoutNotTheKeyPosition() {
+        // On a French keyboard the key in the US "Q" position types "a", and the reverse.
+        let frenchA = KeyPress(keyCode: Self.q, modifiers: .command, character: "a")
+        let frenchQ = KeyPress(keyCode: Self.a, modifiers: .command, character: "q")
+        #expect(KeyRouter.command(for: frenchA, in: .writing) == nil)
+        #expect(KeyRouter.command(for: frenchQ, in: .writing) == .close)
+        // On a German keyboard "z" sits in the US "Y" position (key code 16).
+        let germanZ = KeyPress(keyCode: 16, modifiers: .command, character: "z")
+        #expect(KeyRouter.command(for: germanZ, in: .historyList) == .undoDelete)
+    }
+
+    @Test func upperCaseCharactersMatchToo() {
+        let shifted = KeyPress(keyCode: Self.c, modifiers: [.command, .shift], character: "C")
+        #expect(KeyRouter.command(for: shifted, in: .writing) == .copyAll)
+    }
+
+    @Test func onlyMovingTheSelectionRepeatsWhenAKeyIsHeld() {
+        #expect(KeyRouter.repeatsWhenHeld(.moveUp))
+        #expect(KeyRouter.repeatsWhenHeld(.moveDown))
+        for command in [KeyCommand.close, .deleteSelected, .undoDelete, .backToWriting, .openSelected,
+                        .newNote, .showHistory, .copySelected, .copyAll, .settings, .focusSearch] {
+            #expect(!KeyRouter.repeatsWhenHeld(command))
+        }
     }
 
     @Test func escapeClosesWhenWritingAndGoesBackFromHistory() {
@@ -88,11 +122,11 @@ import Testing
     }
 
     @Test func typingInTheListReturnsFocusToSearch() {
-        #expect(KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.a, modifiers: []), in: .historyList))
-        #expect(KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.delete, modifiers: []), in: .historyList))
-        #expect(!KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.a, modifiers: .command), in: .historyList))
-        #expect(!KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.down, modifiers: []), in: .historyList))
-        #expect(!KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.a, modifiers: []), in: .historySearch))
-        #expect(!KeyRouter.returnsFocusToSearch(KeyPress(keyCode: Self.a, modifiers: []), in: .writing))
+        #expect(KeyRouter.returnsFocusToSearch(Self.press(Self.a), in: .historyList))
+        #expect(KeyRouter.returnsFocusToSearch(Self.press(Self.delete), in: .historyList))
+        #expect(!KeyRouter.returnsFocusToSearch(Self.press(Self.a, .command), in: .historyList))
+        #expect(!KeyRouter.returnsFocusToSearch(Self.press(Self.down), in: .historyList))
+        #expect(!KeyRouter.returnsFocusToSearch(Self.press(Self.a), in: .historySearch))
+        #expect(!KeyRouter.returnsFocusToSearch(Self.press(Self.a), in: .writing))
     }
 }

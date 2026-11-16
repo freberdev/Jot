@@ -9,14 +9,20 @@ public struct KeyModifiers: OptionSet, Codable, Hashable, Sendable {
     public static let control = KeyModifiers(rawValue: 1 << 3)
 }
 
-/// A key pressed together with modifiers. `keyCode` is the hardware key, independent of layout.
+/// A key pressed together with modifiers.
+///
+/// `keyCode` is the hardware key, the same on every keyboard layout. `character` is what that
+/// key types on the current layout, so that ⌘Z is the key marked Z whether the keyboard is
+/// Swedish, French or German.
 public struct KeyPress: Equatable, Sendable {
     public var keyCode: UInt16
     public var modifiers: KeyModifiers
+    public var character: String?
 
-    public init(keyCode: UInt16, modifiers: KeyModifiers) {
+    public init(keyCode: UInt16, modifiers: KeyModifiers, character: String? = nil) {
         self.keyCode = keyCode
         self.modifiers = modifiers
+        self.character = character
     }
 }
 
@@ -47,14 +53,7 @@ public enum KeyContext: Sendable {
 /// The capture window's key table. Keys that are not listed go to the text field as usual.
 public enum KeyRouter {
     private enum Key {
-        static let z: UInt16 = 6
-        static let c: UInt16 = 8
-        static let f: UInt16 = 3
-        static let q: UInt16 = 12
-        static let w: UInt16 = 13
         static let returnKey: UInt16 = 36
-        static let comma: UInt16 = 43
-        static let n: UInt16 = 45
         static let delete: UInt16 = 51
         static let escape: UInt16 = 53
         static let enter: UInt16 = 76
@@ -62,25 +61,20 @@ public enum KeyRouter {
         static let up: UInt16 = 126
     }
 
+    /// The characters of the shortcut keys on a US keyboard, by key code. Used when the
+    /// current layout gives no Latin character for a key.
+    public static let usCharacters: [UInt16: String] = [
+        3: "f", 6: "z", 8: "c", 12: "q", 13: "w", 43: ",", 45: "n",
+    ]
+
     public static func command(for press: KeyPress, in context: KeyContext) -> KeyCommand? {
         let inHistory = context != .writing
         let inList = context == .historyList
 
+        // Keys without a character are matched by position.
         switch (press.keyCode, press.modifiers) {
         case (Key.escape, []):
             return inHistory ? .backToWriting : .close
-        case (Key.w, .command), (Key.q, .command):
-            return .close
-        case (Key.f, .command):
-            return inHistory ? .focusSearch : .showHistory
-        case (Key.n, .command):
-            return .newNote
-        case (Key.comma, .command):
-            return .settings
-        case (Key.c, [.command, .shift]):
-            return inHistory ? .copySelected : .copyAll
-        case (Key.c, .command):
-            return inList ? .copySelected : nil
         case (Key.down, []):
             return inHistory ? .moveDown : nil
         case (Key.up, []):
@@ -89,11 +83,35 @@ public enum KeyRouter {
             return inHistory ? .openSelected : nil
         case (Key.delete, .command):
             return inList ? .deleteSelected : nil
-        case (Key.z, .command):
+        default:
+            break
+        }
+
+        // Letters are matched by what the key types.
+        switch (press.character?.lowercased(), press.modifiers) {
+        case ("w", .command), ("q", .command):
+            return .close
+        case ("f", .command):
+            return inHistory ? .focusSearch : .showHistory
+        case ("n", .command):
+            return .newNote
+        case (",", .command):
+            return .settings
+        case ("c", [.command, .shift]):
+            return inHistory ? .copySelected : .copyAll
+        case ("c", .command):
+            return inList ? .copySelected : nil
+        case ("z", .command):
             return inList ? .undoDelete : nil
         default:
             return nil
         }
+    }
+
+    /// Holding a key down repeats it. Only moving through the list should repeat;
+    /// a held ⌘⌫ must not delete one note after another.
+    public static func repeatsWhenHeld(_ command: KeyCommand) -> Bool {
+        command == .moveUp || command == .moveDown
     }
 
     /// True for a key that is meant for the search field although the list has focus:

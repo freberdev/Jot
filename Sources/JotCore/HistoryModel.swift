@@ -20,7 +20,7 @@ public final class HistoryModel {
 
     private let store: NoteStore
     private let locale: Locale
-    /// Notes deleted since the history was opened, most recent last.
+    /// Notes deleted since the window was opened, most recent last.
     private var deleted: [Note] = []
 
     public init(store: NoteStore, locale: Locale = .current) {
@@ -39,10 +39,15 @@ public final class HistoryModel {
 
     public var canUndoDelete: Bool { !deleted.isEmpty }
 
-    /// Back to the state the history opens in. Deleted notes can no longer be restored.
+    /// Back to the state the history opens in: no query, first row selected, focus in the search field.
+    /// Deleted notes stay restorable.
     public func reset() {
-        deleted = []
         query = ""
+    }
+
+    /// Gives up the notes deleted so far. After this they can no longer be restored.
+    public func forgetDeleted() {
+        deleted = []
     }
 
     public func select(_ id: UUID) {

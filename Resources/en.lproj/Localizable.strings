@@ -44,3 +44,9 @@
 "settings.clear.confirm" = "Delete All Notes";
 "settings.clear.cancel" = "Cancel";
 "settings.storage.folder" = "Notes folder";
+
+/* Quitting with text that could not be saved */
+"quit.unsaved.title" = "Jot couldn't save your note";
+"quit.unsaved.message" = "The text in the Jot window is not on disk and will be lost if you quit. Go back to copy it, or to try again.";
+"quit.unsaved.stay" = "Go Back";
+"quit.unsaved.quit" = "Quit Anyway";

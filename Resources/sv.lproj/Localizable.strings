@@ -44,3 +44,9 @@
 "settings.clear.confirm" = "Radera alla anteckningar";
 "settings.clear.cancel" = "Avbryt";
 "settings.storage.folder" = "Mapp för anteckningar";
+
+/* Quitting with text that could not be saved */
+"quit.unsaved.title" = "Jot kunde inte spara anteckningen";
+"quit.unsaved.message" = "Texten i Jot-fönstret finns inte på disk och går förlorad om du avslutar. Gå tillbaka för att kopiera den eller försöka igen.";
+"quit.unsaved.stay" = "Gå tillbaka";
+"quit.unsaved.quit" = "Avsluta ändå";

@@ -22,13 +22,13 @@ public struct NoteFiles: Sendable {
     /// Every readable note in the directory, in no particular order.
     /// Files that are not notes, are damaged, or come from a newer version are skipped.
     public func loadAll() -> [Note] {
-        noteFileURLs().compactMap { url in
-            guard let data = try? Data(contentsOf: url),
-                  let stored = try? Self.decoder.decode(StoredNote.self, from: data),
-                  stored.version <= Self.formatVersion
-            else { return nil }
-            return Note(id: stored.id, text: stored.text, created: stored.created, modified: stored.modified)
-        }
+        readableNotes().map(\.note)
+    }
+
+    /// When the contents of the directory last changed: a file added, removed or replaced.
+    /// `nil` if the directory does not exist.
+    public func directoryModificationDate() -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: directory.path))?[.modificationDate] as? Date
     }
 
     /// Writes the note so that a crash can never leave a half-written file behind:
@@ -79,15 +79,27 @@ public struct NoteFiles: Sendable {
         }
     }
 
-    /// Removes every note file and nothing else.
+    /// Removes every note that `loadAll()` returns, and nothing else. Files Jot cannot read,
+    /// such as notes written by a newer version, are left in place.
     public func deleteAll() throws {
-        for url in noteFileURLs() {
+        for (url, _) in readableNotes() {
             try FileManager.default.removeItem(at: url)
         }
     }
 
     func url(for id: UUID) -> URL {
         directory.appendingPathComponent("\(id.uuidString).json")
+    }
+
+    private func readableNotes() -> [(url: URL, note: Note)] {
+        noteFileURLs().compactMap { url in
+            guard let data = try? Data(contentsOf: url),
+                  let stored = try? Self.decoder.decode(StoredNote.self, from: data),
+                  stored.version <= Self.formatVersion
+            else { return nil }
+            let note = Note(id: stored.id, text: stored.text, created: stored.created, modified: stored.modified)
+            return (url, note)
+        }
     }
 
     private func noteFileURLs() -> [URL] {

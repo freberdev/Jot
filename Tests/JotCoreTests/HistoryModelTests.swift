@@ -155,15 +155,28 @@ import Testing
         #expect(store.notes.count == 3)
     }
 
-    @Test func resetForgetsDeletedNotes() throws {
+    @Test func resetKeepsDeletedNotesRestorable() throws {
         let history = makeHistory()
         history.moveSelection(by: 1)
         try history.deleteSelected()
 
         history.reset()
 
+        #expect(history.canUndoDelete)
+        try history.undoDelete()
+        #expect(store.notes.count == 3)
+    }
+
+    @Test func forgetDeletedDropsUndo() throws {
+        let history = makeHistory()
+        history.moveSelection(by: 1)
+        try history.deleteSelected()
+
+        history.forgetDeleted()
+
         #expect(!history.canUndoDelete)
-        #expect(history.selectedID == brew.id)
+        try history.undoDelete()
+        #expect(store.notes.count == 2)
     }
 
     @Test func emptyHistoryHasNoSelection() throws {

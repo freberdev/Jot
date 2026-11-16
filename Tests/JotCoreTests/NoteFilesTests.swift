@@ -106,6 +106,18 @@ import Testing
         #expect(temp.fileNames() == ["readme.txt"])
     }
 
+    @Test func deleteAllLeavesNoteFilesItCannotRead() throws {
+        try files.write(makeNote("readable"))
+        let future = UUID(), broken = UUID()
+        try Data("{\"version\":99,\"id\":\"\(future.uuidString)\",\"body\":\"newer\"}".utf8)
+            .write(to: temp.notes.appendingPathComponent("\(future.uuidString).json"))
+        try Data("{\"id\":".utf8).write(to: temp.notes.appendingPathComponent("\(broken.uuidString).json"))
+
+        try files.deleteAll()
+
+        #expect(temp.fileNames() == ["\(broken.uuidString).json", "\(future.uuidString).json"].sorted())
+    }
+
     @Test func defaultDirectoryIsInApplicationSupport() {
         #expect(NoteFiles.defaultDirectory.path.hasSuffix("/Library/Application Support/Jot/Notes"))
     }

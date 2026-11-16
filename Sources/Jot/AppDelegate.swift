@@ -29,8 +29,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    /// Quitting must never silently throw away text. If the note cannot be written to disk,
+    /// the user decides whether to quit anyway.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         model.saveNow()
+        guard model.editor.saveFailed else { return .terminateNow }
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L("quit.unsaved.title")
+        alert.informativeText = L("quit.unsaved.message")
+        alert.addButton(withTitle: L("quit.unsaved.stay"))
+        alert.addButton(withTitle: L("quit.unsaved.quit"))
+        NSApp.activateInsistently()
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
     }
 
     @objc private func willSleep(_ notification: Notification) {
