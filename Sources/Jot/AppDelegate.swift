@@ -10,6 +10,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(false, forKey: "NSAutomaticQuoteSubstitutionEnabled")
         UserDefaults.standard.set(false, forKey: "NSAutomaticDashSubstitutionEnabled")
 
+        // "-appearance dark" or "-appearance light" on the command line overrides the system, for development.
+        switch UserDefaults.standard.string(forKey: "appearance") {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: break
+        }
+
         model.start()
 
         NSWorkspace.shared.notificationCenter.addObserver(

@@ -250,7 +250,12 @@ import Testing
         debouncer.schedule { fired.append("second") }
         #expect(fired.isEmpty)
 
-        try await Task.sleep(for: .milliseconds(400))
+        // Other suites may keep the main actor busy, so wait for the action rather than for a fixed time.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while fired.isEmpty, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try await Task.sleep(for: .milliseconds(100))
         #expect(fired == ["second"])
     }
 
