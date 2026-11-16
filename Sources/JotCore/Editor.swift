@@ -49,6 +49,15 @@ public final class Editor {
         replace(id: note.id, savedNote: note, text: note.text)
     }
 
+    /// Drops the current note without saving, if it is the one with this id.
+    /// Used when the note has been deleted elsewhere, so that typing cannot bring it back.
+    public func forget(id: UUID) {
+        guard id == noteID else { return }
+        debouncer.cancel()
+        saveFailed = false
+        replace(id: UUID(), savedNote: nil, text: "")
+    }
+
     /// Saves now instead of waiting for typing to pause.
     public func flush() {
         debouncer.cancel()

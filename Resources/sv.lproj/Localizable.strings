@@ -9,3 +9,14 @@
 /* Menu bar */
 "menu.new" = "Ny anteckning";
 "menu.quit" = "Avsluta Jot";
+
+/* History */
+"capture.history.help" = "Historik (⌘F)";
+"capture.history.label" = "Historik";
+"history.search.placeholder" = "Sök";
+"history.search.label" = "Sök i anteckningar";
+"history.empty" = "Inga anteckningar än.";
+"history.noMatches" = "Inga träffar.";
+"history.row.copy" = "Kopiera";
+"history.row.delete" = "Radera";
+"menu.history" = "Historik";

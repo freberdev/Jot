@@ -6,8 +6,19 @@ struct CaptureRootView: View {
     let model: AppModel
 
     var body: some View {
-        CaptureView(model: model, editor: model.editor)
-            .ignoresSafeArea()
+        ZStack {
+            // The editor stays alive behind the history, so the insertion point and scroll
+            // position are where they were when the user comes back.
+            CaptureView(model: model, editor: model.editor)
+                .opacity(model.mode == .write ? 1 : 0)
+                .allowsHitTesting(model.mode == .write)
+                .accessibilityHidden(model.mode != .write)
+
+            if model.mode == .history {
+                HistoryView(model: model, history: model.history)
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 
@@ -49,11 +60,19 @@ struct CaptureView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            Text(editor.saveFailed ? L("capture.status.saveFailed") : L("capture.status.new"))
+            Text(status)
                 .font(.caption)
                 .foregroundStyle(editor.saveFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.tertiary))
 
             Spacer()
+
+            Button {
+                model.showHistory()
+            } label: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .help(L("capture.history.help"))
+            .accessibilityLabel(L("capture.history.label"))
 
             Button {
                 model.copyAll()
@@ -69,5 +88,13 @@ struct CaptureView: View {
         .foregroundStyle(.secondary)
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
+    }
+
+    private var status: String {
+        if editor.saveFailed { return L("capture.status.saveFailed") }
+        if model.isContinuing, let note = editor.savedNote {
+            return TimeLabel.string(for: note.modified, now: Date())
+        }
+        return L("capture.status.new")
     }
 }

@@ -9,3 +9,14 @@
 /* Menu bar */
 "menu.new" = "New Note";
 "menu.quit" = "Quit Jot";
+
+/* History */
+"capture.history.help" = "History (⌘F)";
+"capture.history.label" = "History";
+"history.search.placeholder" = "Search";
+"history.search.label" = "Search notes";
+"history.empty" = "No notes yet.";
+"history.noMatches" = "No matches.";
+"history.row.copy" = "Copy";
+"history.row.delete" = "Delete";
+"menu.history" = "History";

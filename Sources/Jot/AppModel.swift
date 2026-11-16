@@ -12,8 +12,14 @@ final class AppModel {
     /// True for a moment after the note has been copied, so the button can confirm it.
     private(set) var didCopy = false
 
+    /// The id of the note whose copy was just confirmed in the history list.
+    private(set) var copiedNoteID: UUID?
+    /// True while an earlier note is being continued, false for a note started in this session.
+    private(set) var isContinuing = false
+
     let store: NoteStore
     let editor: Editor
+    let history: HistoryModel
 
     @ObservationIgnored private var panel: CapturePanelController?
     @ObservationIgnored private let hotKey = HotKey()
@@ -26,6 +32,7 @@ final class AppModel {
             ?? NoteFiles.defaultDirectory
         store = NoteStore(files: NoteFiles(directory: directory))
         editor = Editor(store: store, debouncer: TimerDebouncer())
+        history = HistoryModel(store: store)
     }
 
     /// Called once the app has launched: builds the panel and claims the shortcut.
@@ -58,8 +65,50 @@ final class AppModel {
 
     func newNote() {
         editor.startNew()
+        isContinuing = editor.savedNote != nil
         mode = .write
         panel?.show(focusing: .editor)
+    }
+
+    // MARK: History
+
+    func showHistory() {
+        editor.flush()
+        history.reset()
+        mode = .history
+        panel?.show(focusing: .search)
+    }
+
+    func backToWriting() {
+        mode = .write
+        panel?.focus(.editor)
+    }
+
+    func open(_ note: Note) {
+        editor.open(note)
+        // A note that could not be saved stays in the editor; then there is nothing to switch to.
+        if editor.noteID == note.id { isContinuing = true }
+        backToWriting()
+    }
+
+    func delete(_ note: Note) {
+        history.select(note.id)
+        deleteSelected()
+    }
+
+    private func deleteSelected() {
+        guard let id = history.selected?.id else { return }
+        do {
+            try history.deleteSelected()
+            editor.forget(id: id)
+            if editor.savedNote == nil { isContinuing = false }
+        } catch {
+            NSSound.beep()
+        }
+    }
+
+    private func undoDelete() {
+        do { try history.undoDelete() } catch { NSSound.beep() }
     }
 
     func closePanel() {
@@ -78,7 +127,13 @@ final class AppModel {
 
     // MARK: Keys
 
-    private var keyContext: KeyContext { .writing }
+    private var keyContext: KeyContext {
+        switch (mode, history.focus) {
+        case (.write, _): .writing
+        case (.history, .search): .historySearch
+        case (.history, .list): .historyList
+        }
+    }
 
     private func handleKey(_ event: NSEvent) -> Bool {
         // Let an input method finish composing before any key is taken away from it.
@@ -86,7 +141,11 @@ final class AppModel {
             return false
         }
         let press = KeyPress(keyCode: event.keyCode, modifiers: KeyModifiers(event.modifierFlags))
-        guard let command = KeyRouter.command(for: press, in: keyContext) else { return false }
+        guard let command = KeyRouter.command(for: press, in: keyContext) else {
+            // Typing while the list has focus continues the search.
+            if KeyRouter.returnsFocusToSearch(press, in: keyContext) { history.focus = .search }
+            return false
+        }
         perform(command)
         return true
     }
@@ -96,7 +155,16 @@ final class AppModel {
         case .close: closePanel()
         case .newNote: newNote()
         case .copyAll: copyAll()
-        default: break
+        case .showHistory: showHistory()
+        case .backToWriting: backToWriting()
+        case .focusSearch: history.focus = .search
+        case .moveUp: history.moveSelection(by: -1)
+        case .moveDown: history.moveSelection(by: 1)
+        case .openSelected: if let note = history.selected { open(note) }
+        case .copySelected: if let note = history.selected { copy(note) }
+        case .deleteSelected: deleteSelected()
+        case .undoDelete: undoDelete()
+        case .settings: break
         }
     }
 
@@ -104,14 +172,29 @@ final class AppModel {
 
     func copyAll() {
         guard !editor.text.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(editor.text, forType: .string)
+        putOnPasteboard(editor.text)
         didCopy = true
+        scheduleCopyReset()
+    }
+
+    func copy(_ note: Note) {
+        putOnPasteboard(note.text)
+        copiedNoteID = note.id
+        scheduleCopyReset()
+    }
+
+    private func putOnPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func scheduleCopyReset() {
         copyResetTask?.cancel()
         copyResetTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
             self?.didCopy = false
+            self?.copiedNoteID = nil
         }
     }
 }

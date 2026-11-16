@@ -213,6 +213,35 @@ import Testing
         #expect(editor.saveFailed)
     }
 
+    @Test func forgettingTheOpenNoteStartsAnEmptyOneWithoutSaving() throws {
+        let note = makeNote("deleted from history", at: 5)
+        try store.save(note)
+        let editor = makeEditor()
+        editor.open(note)
+        editor.text = "deleted from history, with an edit"
+        try store.delete(id: note.id)
+
+        editor.forget(id: note.id)
+
+        #expect(editor.text.isEmpty)
+        #expect(editor.noteID != note.id)
+        #expect(editor.savedNote == nil)
+        #expect(!debouncer.hasPending)
+        editor.leave()
+        #expect(store.notes.isEmpty)
+    }
+
+    @Test func forgettingAnotherNoteChangesNothing() {
+        let editor = makeEditor()
+        editor.text = "still here"
+        let id = editor.noteID
+
+        editor.forget(id: UUID())
+
+        #expect(editor.text == "still here")
+        #expect(editor.noteID == id)
+    }
+
     @Test func timerDebouncerFiresOnceAfterDelay() async throws {
         let debouncer = TimerDebouncer(delay: .milliseconds(50))
         var fired: [String] = []
