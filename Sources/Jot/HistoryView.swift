@@ -56,6 +56,11 @@ struct HistoryView: View {
                     .onChange(of: highlighted) { _, id in
                         if let id { proxy.scrollTo(id) }
                     }
+                    .onChange(of: history.query) {
+                        // When the search is cleared the list is whole again; keep the current note in view.
+                        guard let highlighted else { return }
+                        DispatchQueue.main.async { proxy.scrollTo(highlighted) }
+                    }
                 }
             }
         }

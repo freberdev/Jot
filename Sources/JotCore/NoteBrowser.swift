@@ -52,6 +52,7 @@ public final class NoteBrowser {
         editor.startNew()
         isContinuing = editor.savedNote != nil
         end()
+        clearSearch()
     }
 
     // MARK: Into and out of the list
@@ -82,6 +83,7 @@ public final class NoteBrowser {
         guard isBrowsing else { return }
         showSelected()
         end()
+        clearSearch()
     }
 
     /// The text got the keyboard some other way, such as a click: keep what is shown.
@@ -96,6 +98,7 @@ public final class NoteBrowser {
             return
         }
         end()
+        clearSearch()
         if let id = origin.noteID, let note = store.note(id: id) {
             if editor.noteID != id { editor.open(note) }
             if editor.noteID == id { isContinuing = origin.wasContinuing }
@@ -109,6 +112,7 @@ public final class NoteBrowser {
     public func open(_ note: Note) {
         show(note)
         end()
+        clearSearch()
     }
 
     // MARK: Deleting
@@ -163,6 +167,12 @@ public final class NoteBrowser {
         editor.open(note)
         // A note that could not be saved stays in the editor; then nothing was opened.
         if editor.noteID == note.id { isContinuing = true }
+    }
+
+    /// Once a note has been chosen, or the list has been left with Escape or for a new note,
+    /// the search has done its job: the list shows every note again.
+    private func clearSearch() {
+        if !history.query.isEmpty { history.query = "" }
     }
 
     private func end() {

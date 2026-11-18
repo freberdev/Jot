@@ -335,6 +335,69 @@ import Testing
         #expect(browser.isBrowsing)
     }
 
+    @Test func choosingAMatchClearsTheSearch() {
+        browser.enterSearch()
+        history.query = "restart"
+
+        browser.commit()
+
+        #expect(editor.noteID == brew.id)
+        #expect(history.query.isEmpty)
+        #expect(history.results.count == 3)
+        #expect(browser.highlightedID == brew.id)
+    }
+
+    @Test func choosingARowAfterMovingClearsTheSearch() {
+        browser.enterSearch()
+        history.query = "a"
+        browser.move(by: 1)
+        browser.move(by: 1)
+        let shown = editor.noteID
+
+        browser.commit()
+
+        #expect(editor.noteID == shown)
+        #expect(history.query.isEmpty)
+    }
+
+    @Test func clickingARowClearsTheSearch() {
+        browser.enterSearch()
+        history.query = "idé"
+
+        browser.open(idea)
+
+        #expect(editor.noteID == idea.id)
+        #expect(history.query.isEmpty)
+    }
+
+    @Test func escapeClearsTheSearch() {
+        browser.enterSearch()
+        history.query = "anna"
+
+        browser.cancel()
+
+        #expect(history.query.isEmpty)
+        #expect(editor.text.isEmpty)
+    }
+
+    @Test func aNewNoteClearsTheSearch() {
+        browser.enterSearch()
+        history.query = "anna"
+
+        browser.startNew()
+
+        #expect(history.query.isEmpty)
+    }
+
+    @Test func clickingBackInTheTextKeepsTheSearch() {
+        browser.enterSearch()
+        history.query = "anna"
+
+        browser.stay()
+
+        #expect(history.query == "anna")
+    }
+
     @Test func startNewLeavesTheList() {
         browser.enterSearch()
         browser.move(by: 1)

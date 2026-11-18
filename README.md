@@ -34,7 +34,7 @@ Your earlier notes are listed to the right of the text. ⌘F takes you to the li
 | ⌘Z | | Bring back the note you just deleted, when on the notes |
 | ⌘, | Settings | Settings |
 
-In the list, typing always goes to the search field, and typing a search does not change the note you are looking at. ↓ moves onto the notes, and that is where ⌘C, ⌘⌫ and ⌘Z act on notes instead of on the search text. A deleted note can be restored with ⌘Z until the window is closed. A click on a note opens it.
+In the list, typing always goes to the search field, and typing a search does not change the note you are looking at. Choosing a note clears the search, as do Escape and ⌘N. ↓ moves onto the notes, and that is where ⌘C, ⌘⌫ and ⌘Z act on notes instead of on the search text. A deleted note can be restored with ⌘Z until the window is closed. A click on a note opens it.
 
 The list can be hidden with ⌥⌘S or the button below the text; ⌘F brings it back. Whether it is shown when Jot opens is a setting. Showing the list makes the window wider rather than the text area narrower.
 
