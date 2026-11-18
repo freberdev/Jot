@@ -60,6 +60,7 @@ final class AppModel {
             self?.handleKey(event) ?? false
         }
         controller.onResignKey = { [weak self] in self?.editor.flush() }
+        controller.onSearchFieldClick = { [weak self] in self?.searchFieldWasClicked() }
         panel = controller
 
         hotKey.onPressed = { [weak self] in self?.hotKeyPressed() }
@@ -142,7 +143,8 @@ final class AppModel {
             return
         }
         setSidebar(visible: true)
-        panel?.focus(.search)
+        // Also makes the window key, for when this comes from the menu bar while another app has the keyboard.
+        panel?.show(focusing: .search, sidebarVisible: isSidebarVisible)
     }
 
     func toggleSidebar() {
@@ -172,6 +174,12 @@ final class AppModel {
     /// The text view took the keyboard, for example through a click.
     func editorDidGetFocus() {
         if browser.isBrowsing { browser.stay() }
+    }
+
+    /// A click in the search field. While the keyboard is on the rows the field already has
+    /// AppKit's focus, so the click is the only sign that the user means the search text.
+    func searchFieldWasClicked() {
+        if browser.isBrowsing { history.focus = .search }
     }
 
     /// The search field took the keyboard, for example through a click.
@@ -284,6 +292,9 @@ final class AppModel {
     // MARK: Keys
 
     private var keyContext: KeyContext {
+        // Whatever the model believes, keys typed into the note are for the note. This keeps a
+        // key meant for the text from ever reaching the list, where Command-Delete removes a note.
+        if browser.isBrowsing, panel?.editorHasKeyboard == true { browser.stay() }
         guard browser.isBrowsing else { return .writing }
         return history.focus == .search ? .historySearch : .historyList
     }
@@ -366,7 +377,9 @@ extension JotCore.KeyPress {
     init(_ event: NSEvent) {
         // With Command held, most non-Latin layouts report a Latin character in `characters`.
         // Control and Option change `characters` to something else, so the unmodified one is tried too.
-        let candidates = [event.characters, event.charactersIgnoringModifiers]
+        // With Option held `characters` is a symbol, so then the order is the other way round.
+        let withModifiers = [event.characters, event.charactersIgnoringModifiers]
+        let candidates = event.modifierFlags.contains(.option) ? Array(withModifiers.reversed()) : withModifiers
         let character = candidates.compactMap { $0 }.first { text in
             text.unicodeScalars.count == 1 && text.unicodeScalars.allSatisfy { (0x21...0x7E).contains($0.value) }
         }

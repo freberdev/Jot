@@ -6,6 +6,8 @@ import SwiftUI
 final class CapturePanel: NSPanel {
     /// Sees every key press first. Returns true when the key has been dealt with.
     var keyHandler: (@MainActor (NSEvent) -> Bool)?
+    /// Called for a mouse click that lands in an editable text field (the search field).
+    var textFieldClickHandler: (@MainActor () -> Void)?
 
     init() {
         super.init(
@@ -38,7 +40,19 @@ final class CapturePanel: NSPanel {
     // …and every other key arrives here before it reaches the text field.
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, keyHandler?(event) == true { return }
+        if event.type == .leftMouseDown, isInEditableTextField(event) { textFieldClickHandler?() }
         super.sendEvent(event)
+    }
+
+    private func isInEditableTextField(_ event: NSEvent) -> Bool {
+        guard let content = contentView, let frame = content.superview else { return false }
+        var view = content.hitTest(frame.convert(event.locationInWindow, from: nil))
+        while let current = view {
+            if let field = current as? NSTextField, field.isEditable { return true }
+            if let editor = current as? NSTextView, editor.isFieldEditor { return true }
+            view = current.superview
+        }
+        return false
     }
 }
 
@@ -59,6 +73,9 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
 
     let panel = CapturePanel()
     var onResignKey: (() -> Void)?
+    var onSearchFieldClick: (@MainActor () -> Void)? {
+        didSet { panel.textFieldClickHandler = onSearchFieldClick }
+    }
 
     private let defaults: UserDefaults
     private var isPlacing = false
@@ -86,6 +103,12 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     var isVisible: Bool { panel.isVisible }
     var hasFocus: Bool { panel.isVisible && panel.isKeyWindow }
 
+    /// True when the keyboard is in the note itself, as opposed to the search field.
+    var editorHasKeyboard: Bool {
+        guard let textView = panel.firstResponder as? NSTextView else { return false }
+        return !textView.isFieldEditor
+    }
+
     func show(focusing target: FocusTarget, sidebarVisible: Bool) {
         if !panel.isVisible {
             self.sidebarVisible = sidebarVisible
@@ -103,8 +126,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
         isPlacing = true
         defer { isPlacing = false }
         var frame = panel.frame
-        frame.size.width += visible ? Self.sidebarExtent : -Self.sidebarExtent
-        apply(frame)
+        let textFrame = visible ? frame : NSRect(
+            x: frame.minX, y: frame.minY, width: frame.width - Self.sidebarExtent, height: frame.height)
+        frame.size.width = textFrame.width + (visible ? Self.sidebarExtent : 0)
+        apply(frame, onScreenOf: textFrame)
     }
 
     func hide() {
@@ -117,25 +142,31 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     func focus(_ target: FocusTarget) {
         focusRequest += 1
         let request = focusRequest
-        applyFocus(target)
+        if applyFocus(target) { return }
+        // The field is not there yet. Try again shortly, but stop at the first success so that
+        // a click made in the meantime is not undone.
         for delay in [0, 0.05, 0.15] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self, self.focusRequest == request else { return }
-                self.applyFocus(target)
+                // A new number retires this request, so the remaining tries do nothing.
+                if self.applyFocus(target) { self.focusRequest += 1 }
             }
         }
     }
 
-    private func applyFocus(_ target: FocusTarget) {
-        guard panel.isVisible, let root = panel.contentView else { return }
+    /// Returns true once the wanted field has the keyboard.
+    @discardableResult
+    private func applyFocus(_ target: FocusTarget) -> Bool {
+        guard panel.isVisible, let root = panel.contentView else { return false }
         let responder: NSView? = switch target {
         case .editor: root.firstDescendant { ($0 as? NSTextView).map { $0.isEditable && !$0.isFieldEditor } ?? false }
         case .search: root.firstDescendant { ($0 as? NSTextField)?.isEditable ?? false }
         }
-        guard let responder else { return }
+        guard let responder else { return false }
         if panel.firstResponder !== responder, !isEditing(responder) {
-            panel.makeFirstResponder(responder)
+            return panel.makeFirstResponder(responder)
         }
+        return true
     }
 
     /// A text field is being edited when its field editor is first responder.
@@ -150,9 +181,10 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     private func place() {
         isPlacing = true
         defer { isPlacing = false }
-        var frame = savedFrame() ?? defaultFrame()
+        let textFrame = savedFrame() ?? defaultFrame()
+        var frame = textFrame
         if sidebarVisible { frame.size.width += Self.sidebarExtent }
-        apply(frame)
+        apply(frame, onScreenOf: textFrame)
     }
 
     private func savedFrame() -> NSRect? {
@@ -175,10 +207,14 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
             width: size.width, height: size.height)
     }
 
-    /// Sets the frame, moved left if needed so the right edge stays on its screen.
-    private func apply(_ proposed: NSRect) {
+    /// Sets the frame, moved left if needed so the right edge stays on the screen that the
+    /// writing area is on. The list must not spill over onto a neighbouring display.
+    private func apply(_ proposed: NSRect, onScreenOf textFrame: NSRect) {
         var frame = proposed
-        let screen = NSScreen.screens.first { $0.visibleFrame.intersects(frame) } ?? NSScreen.main
+        let center = NSPoint(x: textFrame.midX, y: textFrame.midY)
+        let screen = NSScreen.screens.first { $0.frame.contains(center) }
+            ?? NSScreen.screens.first { $0.visibleFrame.intersects(textFrame) }
+            ?? NSScreen.main
         if let visible = screen?.visibleFrame, frame.maxX > visible.maxX {
             frame.origin.x = max(visible.minX, visible.maxX - frame.width)
         }

@@ -88,8 +88,21 @@ struct NoteTextView: NSViewRepresentable {
             textView.scrollRangeToVisible(NSRange(location: end, length: 0))
         }
 
+        /// The editor may have switched to another note since the view was last loaded, with
+        /// SwiftUI's update still to come. Typing must never put one note's text into another,
+        /// so in that case the view is brought up to date first and the key press is dropped.
+        func textView(
+            _ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?
+        ) -> Bool {
+            guard loadedRevision != editor.contentRevision else { return true }
+            load(into: textView)
+            return false
+        }
+
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
+            guard let textView = notification.object as? NSTextView,
+                  loadedRevision == editor.contentRevision
+            else { return }
             editor.text = textView.string
         }
     }

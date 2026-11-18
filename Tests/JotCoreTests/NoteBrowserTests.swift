@@ -269,6 +269,72 @@ import Testing
         #expect(editor.text == "only copy")
     }
 
+    @Test func choosingTheEmptiedNoteInTheListBringsItsTextBack() throws {
+        browser.open(brew)
+        editor.text = ""
+        editor.flush()
+
+        browser.open(brew)
+
+        #expect(editor.text == brew.text)
+        browser.closeSession()
+        editor.leave()
+        #expect(store.note(id: brew.id) == brew)
+    }
+
+    @Test func returnOnTheEmptiedNoteBringsItsTextBack() {
+        browser.open(anna)
+        editor.text = ""
+        browser.enterSearch()
+        browser.move(by: 1)
+        #expect(history.selectedID == anna.id)
+
+        browser.commit()
+
+        #expect(editor.text == anna.text)
+        #expect(store.note(id: anna.id) == anna)
+    }
+
+    @Test func anEmptiedNoteSurvivesBrowsingAndEscapeBringsItBack() {
+        browser.open(brew)
+        editor.text = ""
+        browser.enterSearch()
+        browser.move(by: 1)
+        browser.move(by: 1)
+        browser.move(by: 1)
+        #expect(store.note(id: brew.id) == brew)
+
+        browser.cancel()
+
+        #expect(editor.noteID == brew.id)
+        #expect(editor.text == brew.text)
+        #expect(store.notes.count == 3)
+    }
+
+    @Test func anEmptiedNoteIsNotDeletedByChoosingAnotherNote() {
+        browser.open(brew)
+        editor.text = ""
+
+        browser.open(idea)
+
+        #expect(editor.noteID == idea.id)
+        #expect(store.note(id: brew.id) == brew)
+        #expect(temp.fileNames().count == 3)
+    }
+
+    @Test func deletingARowFromTheSearchFieldKeepsTheEditorAndTheSearchFocus() throws {
+        editor.text = "writing"
+        let id = editor.noteID
+        browser.enterSearch()
+
+        try browser.delete(brew)
+
+        #expect(editor.noteID == id)
+        #expect(editor.text == "writing")
+        #expect(history.focus == .search)
+        #expect(browser.isBrowsing)
+    }
+
     @Test func startNewLeavesTheList() {
         browser.enterSearch()
         browser.move(by: 1)

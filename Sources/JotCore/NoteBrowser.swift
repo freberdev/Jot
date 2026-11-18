@@ -121,13 +121,15 @@ public final class NoteBrowser {
     /// Deletes a note. If it was the one in the editor, the editor lets go of it; while on
     /// the rows, the note that takes its place is shown.
     public func delete(_ note: Note) throws {
+        let wasOnRows = isBrowsing && history.focus == .list
         history.select(note.id)
         try history.deleteSelected()
         editor.forget(id: note.id)
         if editor.savedNote == nil { isContinuing = false }
-        if isBrowsing {
+        if wasOnRows {
             showSelected()
         } else {
+            // Deleted with the mouse from elsewhere: the editor and the keyboard stay where they were.
             history.focusSearch()
         }
     }
@@ -146,7 +148,18 @@ public final class NoteBrowser {
     }
 
     private func show(_ note: Note) {
-        guard note.id != editor.noteID else { return }
+        let editorIsBlank = editor.text.allSatisfy(\.isWhitespace)
+        if note.id == editor.noteID {
+            // Already the note in the editor. If its text has been wiped, choosing it in the
+            // list is how the user gets the saved text back.
+            if editorIsBlank { editor.open(note) }
+            return
+        }
+        if editorIsBlank, editor.savedNote != nil {
+            // Looking at another note must not throw away one that was emptied. The editor lets
+            // go of it without deleting it; it is only removed when the window closes on it.
+            editor.forget(id: editor.noteID)
+        }
         editor.open(note)
         // A note that could not be saved stays in the editor; then nothing was opened.
         if editor.noteID == note.id { isContinuing = true }

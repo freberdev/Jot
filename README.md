@@ -31,14 +31,14 @@ Your earlier notes are listed to the right of the text. ⌘F takes you to the li
 | ⇧⌘C | Copy the whole note | Copy the selected note |
 | ⌘C | | Copy the selected note, when on the notes |
 | ⌘⌫ | | Delete the selected note, when on the notes |
-| ⌘Z | | Bring back the note you just deleted |
+| ⌘Z | | Bring back the note you just deleted, when on the notes |
 | ⌘, | Settings | Settings |
 
 In the list, typing always goes to the search field, and typing a search does not change the note you are looking at. ↓ moves onto the notes, and that is where ⌘C, ⌘⌫ and ⌘Z act on notes instead of on the search text. A deleted note can be restored with ⌘Z until the window is closed. A click on a note opens it.
 
 The list can be hidden with ⌥⌘S or the button below the text; ⌘F brings it back. Whether it is shown when Jot opens is a setting. Showing the list makes the window wider rather than the text area narrower.
 
-A note that is empty is never saved. A note you empty completely is removed when you leave it.
+A note that is empty is never saved. A note you empty completely is removed when you close the window or start a new note. Until then, choosing it in the list brings its text back.
 
 Settings let you change the shortcut, open Jot at login, choose whether the list is shown, see where notes are stored, and delete all notes.
 
