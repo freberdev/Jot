@@ -29,9 +29,12 @@ public struct KeyPress: Equatable, Sendable {
 /// What the capture window does in response to a key.
 public enum KeyCommand: Equatable, Sendable {
     case close
-    case showHistory
+    /// Leave the list and return to the note the user came from.
     case backToWriting
+    /// Go to the search field of the list, showing the list if it is hidden.
     case focusSearch
+    /// Show or hide the list.
+    case toggleSidebar
     case newNote
     case copyAll
     case settings
@@ -54,6 +57,7 @@ public enum KeyContext: Sendable {
 public enum KeyRouter {
     private enum Key {
         static let returnKey: UInt16 = 36
+        static let tab: UInt16 = 48
         static let delete: UInt16 = 51
         static let escape: UInt16 = 53
         static let enter: UInt16 = 76
@@ -64,7 +68,7 @@ public enum KeyRouter {
     /// The characters of the shortcut keys on a US keyboard, by key code. Used when the
     /// current layout gives no Latin character for a key.
     public static let usCharacters: [UInt16: String] = [
-        3: "f", 6: "z", 8: "c", 12: "q", 13: "w", 43: ",", 45: "n",
+        1: "s", 3: "f", 6: "z", 8: "c", 12: "q", 13: "w", 43: ",", 45: "n",
     ]
 
     public static func command(for press: KeyPress, in context: KeyContext) -> KeyCommand? {
@@ -81,6 +85,9 @@ public enum KeyRouter {
             return inList ? .moveUp : nil
         case (Key.returnKey, []), (Key.enter, []):
             return inHistory ? .openSelected : nil
+        case (Key.tab, []), (Key.tab, .shift):
+            // In the text Tab types a tab. From the list it leads back to the text.
+            return inHistory ? .openSelected : nil
         case (Key.delete, .command):
             return inList ? .deleteSelected : nil
         default:
@@ -92,7 +99,9 @@ public enum KeyRouter {
         case ("w", .command), ("q", .command):
             return .close
         case ("f", .command):
-            return inHistory ? .focusSearch : .showHistory
+            return .focusSearch
+        case ("s", [.command, .option]):
+            return .toggleSidebar
         case ("n", .command):
             return .newNote
         case (",", .command):

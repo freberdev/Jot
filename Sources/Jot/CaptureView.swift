@@ -6,23 +6,20 @@ struct CaptureRootView: View {
     let model: AppModel
 
     var body: some View {
-        ZStack {
-            // The editor stays alive behind the history, so the insertion point and scroll
-            // position are where they were when the user comes back.
+        HStack(spacing: 0) {
             CaptureView(model: model, editor: model.editor)
-                .opacity(model.mode == .write ? 1 : 0)
-                .allowsHitTesting(model.mode == .write)
-                .accessibilityHidden(model.mode != .write)
 
-            if model.mode == .history {
+            if model.isSidebarVisible {
+                Divider()
                 HistoryView(model: model, history: model.history)
+                    .frame(width: CapturePanelController.listWidth)
             }
         }
         .ignoresSafeArea()
     }
 }
 
-/// Writing mode: all text, and one quiet line of status and controls underneath.
+/// The writing area: all text, and one quiet line of status and controls underneath.
 struct CaptureView: View {
     let model: AppModel
     let editor: Editor
@@ -30,7 +27,7 @@ struct CaptureView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
-                NoteTextView(editor: editor)
+                NoteTextView(editor: editor) { model.editorDidGetFocus() }
 
                 if editor.text.isEmpty {
                     Text(model.showsWelcome
@@ -59,12 +56,12 @@ struct CaptureView: View {
             Spacer()
 
             Button {
-                model.showHistory()
+                model.toggleSidebar()
             } label: {
-                Image(systemName: "clock.arrow.circlepath")
+                Image(systemName: "sidebar.right")
             }
-            .help(L("capture.history.help"))
-            .accessibilityLabel(L("capture.history.label"))
+            .help(L("capture.sidebar.help"))
+            .accessibilityLabel(L("capture.sidebar.label"))
 
             Button {
                 model.copyAll()
@@ -84,7 +81,7 @@ struct CaptureView: View {
 
     private var status: String {
         if editor.saveFailed { return L("capture.status.saveFailed") }
-        if model.isContinuing, let note = editor.savedNote {
+        if model.browser.isContinuing, let note = editor.savedNote {
             return TimeLabel.string(for: note.modified, now: Date())
         }
         return L("capture.status.new")

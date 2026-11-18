@@ -10,16 +10,16 @@
 "menu.new" = "New Note  %@";
 "menu.quit" = "Quit Jot";
 
-/* History */
-"capture.history.help" = "History (⌘F)";
-"capture.history.label" = "History";
+/* The list of notes */
+"capture.sidebar.help" = "Show or hide the list of notes (⌥⌘S)";
+"capture.sidebar.label" = "List of notes";
 "history.search.placeholder" = "Search";
 "history.search.label" = "Search notes";
 "history.empty" = "No notes yet.";
 "history.noMatches" = "No matches.";
 "history.row.copy" = "Copy";
 "history.row.delete" = "Delete";
-"menu.history" = "History";
+"menu.search" = "Search Notes";
 
 /* First launch */
 "capture.placeholder.welcome" = "Type here. %@ opens Jot from anywhere.";
@@ -34,6 +34,7 @@
 "settings.shortcut.needsModifier" = "A shortcut needs ⌘ or ⌃. Option alone would get in the way of typing characters such as @ and |.";
 "settings.shortcut.refused" = "macOS didn't accept that shortcut. The previous one is still in use.";
 "settings.login.label" = "Open Jot at login";
+"settings.list.label" = "Show the list of notes when Jot opens";
 "settings.login.failed" = "Couldn't change the login item. You can set it under System Settings > General > Login Items.";
 "settings.storage.title" = "Storage";
 "settings.storage.reveal" = "Show in Finder";

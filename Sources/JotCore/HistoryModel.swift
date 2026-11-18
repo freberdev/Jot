@@ -45,6 +45,12 @@ public final class HistoryModel {
         query = ""
     }
 
+    /// Puts the keyboard in the search field, with the first match selected. The query stays.
+    public func focusSearch() {
+        selectedID = results.first?.id
+        focus = .search
+    }
+
     /// Gives up the notes deleted so far. After this they can no longer be restored.
     public func forgetDeleted() {
         deleted = []

@@ -17,7 +17,7 @@ private struct MenuContent: View {
 
     var body: some View {
         Button(L("menu.new", model.shortcutDisplay)) { model.newNote() }
-        Button(L("menu.history")) { model.showHistory() }
+        Button(L("menu.search")) { model.searchNotes() }
         Divider()
         Button(L("menu.settings")) { model.openSettings() }
         Divider()

@@ -7,7 +7,7 @@ No titles, no folders, no question about where the note should go. Jot does one 
 - Lives in the menu bar and opens with a global shortcut, ⇧⌘J by default.
 - The insertion point is already in the text when the window appears.
 - Everything is saved as you type. There is no Save button and nothing to confirm.
-- Earlier notes are one shortcut away, newest first, with search.
+- Earlier notes sit in a list beside the text, newest first, with search.
 - Notes stay on your Mac. Jot contains no networking code.
 - English and Swedish, light and dark.
 
@@ -17,25 +17,30 @@ Requires macOS 26 or later.
 
 Press the shortcut anywhere to open a new note. Press it again, or Escape, to close. If the window is open but you have clicked into another app, the shortcut brings you back to the note you were writing.
 
-| Key | While writing | In history |
+Your earlier notes are listed to the right of the text. ⌘F takes you to the list's search field; from there ↓ moves onto the notes. The note you stand on is shown in the text area straight away, so ⇧⌘J, ⌘F, ↓ is all it takes to be reading your latest note. Return puts the insertion point in it. Escape takes you back to the note you came from.
+
+| Key | In the text | In the list |
 |---|---|---|
 | ⇧⌘J (configurable) | Close | Close |
-| Esc | Close | Back to the note |
-| ⌘F | Open history | Go to the search field |
+| Esc | Close | Back to the note you came from |
+| ⌘F | Go to the list's search field | Go to the search field |
+| ↓ ↑ | | Move through the notes, showing each one |
+| Return, Tab | | Edit the note that is shown, or the first match of a search |
+| ⌥⌘S | Hide or show the list | Hide or show the list |
 | ⌘N | Start a new note | Start a new note |
-| ↓ ↑ | | Move through the list |
-| Return | | Open the selected note |
 | ⇧⌘C | Copy the whole note | Copy the selected note |
-| ⌘C | | Copy the selected note, when the list has focus |
-| ⌘⌫ | | Delete the selected note, when the list has focus |
+| ⌘C | | Copy the selected note, when on the notes |
+| ⌘⌫ | | Delete the selected note, when on the notes |
 | ⌘Z | | Bring back the note you just deleted |
 | ⌘, | Settings | Settings |
 
-In history, typing always goes to the search field. ↓ moves focus into the list, and that is where ⌘C, ⌘⌫ and ⌘Z act on notes instead of on the search text. A deleted note can be restored with ⌘Z until the window is closed.
+In the list, typing always goes to the search field, and typing a search does not change the note you are looking at. ↓ moves onto the notes, and that is where ⌘C, ⌘⌫ and ⌘Z act on notes instead of on the search text. A deleted note can be restored with ⌘Z until the window is closed. A click on a note opens it.
+
+The list can be hidden with ⌥⌘S or the button below the text; ⌘F brings it back. Whether it is shown when Jot opens is a setting. Showing the list makes the window wider rather than the text area narrower.
 
 A note that is empty is never saved. A note you empty completely is removed when you leave it.
 
-Settings let you change the shortcut, open Jot at login, see where notes are stored, and clear the history.
+Settings let you change the shortcut, open Jot at login, choose whether the list is shown, see where notes are stored, and delete all notes.
 
 ## Your notes
 

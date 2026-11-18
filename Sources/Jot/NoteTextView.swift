@@ -9,6 +9,8 @@ import SwiftUI
 /// and is only reloaded when the editor replaces the text from outside.
 struct NoteTextView: NSViewRepresentable {
     let editor: Editor
+    /// Called when the text view takes the keyboard.
+    let onFocus: () -> Void
 
     static let font = NSFont.systemFont(ofSize: 15)
 
@@ -17,14 +19,25 @@ struct NoteTextView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         // The panel's title bar is hidden; do not leave room for it above the text.
         scrollView.automaticallyAdjustsContentInsets = false
 
-        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        let textView = FocusReportingTextView(frame: NSRect(origin: .zero, size: scrollView.contentSize))
+        textView.onFocus = onFocus
+        textView.minSize = .zero
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        scrollView.documentView = textView
+
         textView.delegate = context.coordinator
         textView.isRichText = false
         textView.importsGraphics = false
@@ -79,5 +92,16 @@ struct NoteTextView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             editor.text = textView.string
         }
+    }
+}
+
+/// A text view that says when it becomes the place the keyboard goes.
+private final class FocusReportingTextView: NSTextView {
+    var onFocus: (() -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onFocus?() }
+        return became
     }
 }

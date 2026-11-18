@@ -6,16 +6,16 @@ import SwiftUI
 /// Ties the notes, the editor, the capture panel and the global shortcut together.
 @MainActor @Observable
 final class AppModel {
-    enum Mode { case write, history }
-
-    private(set) var mode: Mode = .write
+    /// Whether the list of notes is showing beside the text.
+    private(set) var isSidebarVisible = true
     /// True for a moment after the note has been copied, so the button can confirm it.
     private(set) var didCopy = false
-
-    /// The id of the note whose copy was just confirmed in the history list.
+    /// The id of the note whose copy was just confirmed in the list.
     private(set) var copiedNoteID: UUID?
-    /// True while an earlier note is being continued, false for a note started in this session.
-    private(set) var isContinuing = false
+    /// Whether the list is shown each time the window opens.
+    var showsListOnOpen: Bool {
+        didSet { preferences.showsListOnOpen = showsListOnOpen }
+    }
 
     /// The global shortcut that opens Jot.
     private(set) var shortcut: Shortcut
@@ -29,6 +29,7 @@ final class AppModel {
     let store: NoteStore
     let editor: Editor
     let history: HistoryModel
+    let browser: NoteBrowser
 
     @ObservationIgnored private let preferences = Preferences()
     @ObservationIgnored private var settingsWindow: SettingsWindowController?
@@ -46,7 +47,9 @@ final class AppModel {
         store = NoteStore(files: NoteFiles(directory: directory))
         editor = Editor(store: store, debouncer: TimerDebouncer())
         history = HistoryModel(store: store)
+        browser = NoteBrowser(store: store, editor: editor, history: history)
         shortcut = preferences.shortcut
+        showsListOnOpen = preferences.showsListOnOpen
     }
 
     /// Called once the app has launched: builds the panel and claims the shortcut.
@@ -89,62 +92,28 @@ final class AppModel {
     func hotKeyPressed() {
         guard let panel else { return }
         if !panel.isVisible {
-            newNote()
+            openPanel()
         } else if panel.hasFocus {
             closePanel()
         } else {
-            panel.show(focusing: mode == .write ? .editor : .search)
+            panel.show(focusing: browser.isBrowsing ? .search : .editor, sidebarVisible: isSidebarVisible)
         }
+    }
+
+    /// Shows the window with a new empty note and the list as the user prefers it.
+    private func openPanel() {
+        isSidebarVisible = showsListOnOpen
+        browser.openSession()
+        panel?.show(focusing: .editor, sidebarVisible: isSidebarVisible)
     }
 
     func newNote() {
-        editor.startNew()
-        isContinuing = editor.savedNote != nil
-        mode = .write
-        panel?.show(focusing: .editor)
-    }
-
-    // MARK: History
-
-    func showHistory() {
-        editor.flush()
-        // Notes may have been added, removed or restored outside Jot since the list was read.
-        store.reloadIfChanged()
-        history.reset()
-        mode = .history
-        panel?.show(focusing: .search)
-    }
-
-    func backToWriting() {
-        mode = .write
-        panel?.focus(.editor)
-    }
-
-    func open(_ note: Note) {
-        editor.open(note)
-        // A note that could not be saved stays in the editor; then there is nothing to switch to.
-        if editor.noteID == note.id { isContinuing = true }
-        backToWriting()
-    }
-
-    func delete(_ note: Note) {
-        history.select(note.id)
-        deleteSelected()
-    }
-
-    private func deleteSelected() {
-        guard let id = history.selected?.id else { return }
-        do {
-            try history.deleteSelected()
-            editor.forget(id: id)
-            if editor.savedNote == nil { isContinuing = false }
-        } catch {
-            NSSound.beep()
+        guard let panel, panel.isVisible else {
+            openPanel()
+            return
         }
-    }
-
-    private func undoDelete() {
-        do { try history.undoDelete() } catch { NSSound.beep() }
+        browser.startNew()
+        panel.show(focusing: .editor, sidebarVisible: isSidebarVisible)
     }
 
     func closePanel() {
@@ -155,8 +124,63 @@ final class AppModel {
             return
         }
         panel?.hide()
-        history.forgetDeleted()
+        browser.closeSession()
         showsWelcome = false
+    }
+
+    // MARK: The list
+
+    /// Shows the window if needed and puts the keyboard in the list's search field.
+    func searchNotes() {
+        if panel?.isVisible != true { openPanel() }
+        focusSearch()
+    }
+
+    private func focusSearch() {
+        guard browser.enterSearch() else {
+            NSSound.beep()
+            return
+        }
+        setSidebar(visible: true)
+        panel?.focus(.search)
+    }
+
+    func toggleSidebar() {
+        if isSidebarVisible, browser.isBrowsing {
+            browser.stay()
+            panel?.focus(.editor)
+        }
+        setSidebar(visible: !isSidebarVisible)
+    }
+
+    private func setSidebar(visible: Bool) {
+        guard visible != isSidebarVisible else { return }
+        isSidebarVisible = visible
+        panel?.setSidebarVisible(visible)
+    }
+
+    /// A click on a row.
+    func open(_ note: Note) {
+        browser.open(note)
+        panel?.focus(.editor)
+    }
+
+    func delete(_ note: Note) {
+        do { try browser.delete(note) } catch { NSSound.beep() }
+    }
+
+    /// The text view took the keyboard, for example through a click.
+    func editorDidGetFocus() {
+        if browser.isBrowsing { browser.stay() }
+    }
+
+    /// The search field took the keyboard, for example through a click.
+    func searchDidGetFocus() {
+        guard !browser.isBrowsing else { return }
+        if !browser.enterSearch() {
+            NSSound.beep()
+            panel?.focus(.editor)
+        }
     }
 
     // MARK: Settings
@@ -241,8 +265,8 @@ final class AppModel {
         do {
             try store.deleteAll()
             editor.forget(id: editor.noteID)
-            isContinuing = false
             history.reset()
+            browser.startNew()
         } catch {
             NSSound.beep()
         }
@@ -260,11 +284,8 @@ final class AppModel {
     // MARK: Keys
 
     private var keyContext: KeyContext {
-        switch (mode, history.focus) {
-        case (.write, _): .writing
-        case (.history, .search): .historySearch
-        case (.history, .list): .historyList
-        }
+        guard browser.isBrowsing else { return .writing }
+        return history.focus == .search ? .historySearch : .historyList
     }
 
     private func handleKey(_ event: NSEvent) -> Bool {
@@ -290,16 +311,22 @@ final class AppModel {
         case .close: closePanel()
         case .newNote: newNote()
         case .copyAll: copyAll()
-        case .showHistory: showHistory()
-        case .backToWriting: backToWriting()
-        case .focusSearch: history.focus = .search
-        case .moveUp: history.moveSelection(by: -1)
-        case .moveDown: history.moveSelection(by: 1)
-        case .openSelected: if let note = history.selected { open(note) }
-        case .copySelected: if let note = history.selected { copy(note) }
-        case .deleteSelected: deleteSelected()
-        case .undoDelete: undoDelete()
         case .settings: openSettings()
+        case .focusSearch: focusSearch()
+        case .toggleSidebar: toggleSidebar()
+        case .moveUp: browser.move(by: -1)
+        case .moveDown: browser.move(by: 1)
+        case .copySelected: if let note = history.selected { copy(note) }
+        case .backToWriting:
+            browser.cancel()
+            panel?.focus(.editor)
+        case .openSelected:
+            browser.commit()
+            panel?.focus(.editor)
+        case .deleteSelected:
+            do { try browser.deleteSelected() } catch { NSSound.beep() }
+        case .undoDelete:
+            do { try browser.undoDelete() } catch { NSSound.beep() }
         }
     }
 

@@ -79,6 +79,15 @@ import Testing
         #expect(preferences.shortcut == .default)
     }
 
+    @Test func theListIsShownOnOpenUnlessTurnedOff() {
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        #expect(preferences.showsListOnOpen)
+        preferences.showsListOnOpen = false
+        #expect(!Preferences(defaults: defaults).showsListOnOpen)
+        preferences.showsListOnOpen = true
+        #expect(Preferences(defaults: defaults).showsListOnOpen)
+    }
+
     @Test func flagsDefaultToFalseAndPersist() {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         #expect(!preferences.didAutoEnableLoginItem)

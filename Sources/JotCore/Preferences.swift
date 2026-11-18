@@ -6,6 +6,7 @@ public struct Preferences {
         static let shortcut = "shortcut"
         static let didAutoEnableLoginItem = "didAutoEnableLoginItem"
         static let hasShownWelcome = "hasShownWelcome"
+        static let showsListOnOpen = "showsListOnOpen"
     }
 
     private let defaults: UserDefaults
@@ -32,6 +33,12 @@ public struct Preferences {
     public var didAutoEnableLoginItem: Bool {
         get { defaults.bool(forKey: Key.didAutoEnableLoginItem) }
         nonmutating set { defaults.set(newValue, forKey: Key.didAutoEnableLoginItem) }
+    }
+
+    /// Whether the list of notes is shown beside the text each time the window opens. On unless turned off.
+    public var showsListOnOpen: Bool {
+        get { defaults.object(forKey: Key.showsListOnOpen) as? Bool ?? true }
+        nonmutating set { defaults.set(newValue, forKey: Key.showsListOnOpen) }
     }
 
     /// Set once the capture window has introduced itself on first launch.

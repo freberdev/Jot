@@ -7,10 +7,11 @@ import Testing
     static let up: UInt16 = 126, down: UInt16 = 125, delete: UInt16 = 51
     static let c: UInt16 = 8, f: UInt16 = 3, n: UInt16 = 45, q: UInt16 = 12
     static let w: UInt16 = 13, z: UInt16 = 6, comma: UInt16 = 43, a: UInt16 = 0
+    static let tab: UInt16 = 48, s: UInt16 = 1
 
     /// The character each of these keys produces on a US keyboard.
     static let usCharacters: [UInt16: String] = [
-        c: "c", f: "f", n: "n", q: "q", w: "w", z: "z", comma: ",", a: "a",
+        c: "c", f: "f", n: "n", q: "q", w: "w", z: "z", comma: ",", a: "a", s: "s",
     ]
 
     static func press(_ key: UInt16, _ modifiers: KeyModifiers = []) -> KeyPress {
@@ -41,7 +42,7 @@ import Testing
         #expect(KeyRouter.repeatsWhenHeld(.moveUp))
         #expect(KeyRouter.repeatsWhenHeld(.moveDown))
         for command in [KeyCommand.close, .deleteSelected, .undoDelete, .backToWriting, .openSelected,
-                        .newNote, .showHistory, .copySelected, .copyAll, .settings, .focusSearch] {
+                        .newNote, .toggleSidebar, .copySelected, .copyAll, .settings, .focusSearch] {
             #expect(!KeyRouter.repeatsWhenHeld(command))
         }
     }
@@ -58,10 +59,24 @@ import Testing
         #expect(route(Self.q, .command, in: context) == .close)
     }
 
-    @Test func commandFOpensHistoryThenFocusesSearch() {
-        #expect(route(Self.f, .command, in: .writing) == .showHistory)
-        #expect(route(Self.f, .command, in: .historySearch) == .focusSearch)
-        #expect(route(Self.f, .command, in: .historyList) == .focusSearch)
+    @Test(arguments: [KeyContext.writing, .historySearch, .historyList])
+    func commandFGoesToTheSearchField(context: KeyContext) {
+        #expect(route(Self.f, .command, in: context) == .focusSearch)
+    }
+
+    @Test(arguments: [KeyContext.writing, .historySearch, .historyList])
+    func optionCommandSTogglesTheList(context: KeyContext) {
+        #expect(route(Self.s, [.command, .option], in: context) == .toggleSidebar)
+        #expect(route(Self.s, .command, in: context) == nil)
+    }
+
+    @Test func tabTypesATabWhileWritingAndLeavesTheListOtherwise() {
+        #expect(route(Self.tab, in: .writing) == nil)
+        #expect(route(Self.tab, .shift, in: .writing) == nil)
+        #expect(route(Self.tab, .option, in: .writing) == nil)
+        #expect(route(Self.tab, in: .historySearch) == .openSelected)
+        #expect(route(Self.tab, in: .historyList) == .openSelected)
+        #expect(route(Self.tab, .shift, in: .historyList) == .openSelected)
     }
 
     @Test(arguments: [KeyContext.writing, .historySearch, .historyList])

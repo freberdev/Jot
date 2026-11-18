@@ -10,16 +10,16 @@
 "menu.new" = "Ny anteckning  %@";
 "menu.quit" = "Avsluta Jot";
 
-/* History */
-"capture.history.help" = "Historik (⌘F)";
-"capture.history.label" = "Historik";
+/* The list of notes */
+"capture.sidebar.help" = "Visa eller dölj listan med anteckningar (⌥⌘S)";
+"capture.sidebar.label" = "Lista med anteckningar";
 "history.search.placeholder" = "Sök";
 "history.search.label" = "Sök i anteckningar";
 "history.empty" = "Inga anteckningar än.";
 "history.noMatches" = "Inga träffar.";
 "history.row.copy" = "Kopiera";
 "history.row.delete" = "Radera";
-"menu.history" = "Historik";
+"menu.search" = "Sök i anteckningar";
 
 /* First launch */
 "capture.placeholder.welcome" = "Skriv här. %@ öppnar Jot varifrån som helst.";
@@ -34,6 +34,7 @@
 "settings.shortcut.needsModifier" = "Ett kortkommando behöver ⌘ eller ⌃. Bara Alternativ skulle krocka med tecken som @ och |.";
 "settings.shortcut.refused" = "macOS godtog inte kortkommandot. Det förra gäller fortfarande.";
 "settings.login.label" = "Öppna Jot vid inloggning";
+"settings.list.label" = "Visa listan med anteckningar när Jot öppnas";
 "settings.login.failed" = "Det gick inte att ändra inloggningsobjektet. Du kan ändra det under Systeminställningar > Allmänt > Inloggningsobjekt.";
 "settings.storage.title" = "Lagring";
 "settings.storage.reveal" = "Visa i Finder";

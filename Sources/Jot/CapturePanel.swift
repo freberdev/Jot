@@ -21,7 +21,6 @@ final class CapturePanel: NSPanel {
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         animationBehavior = .none
-        minSize = NSSize(width: 360, height: 200)
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             standardWindowButton(button)?.isHidden = true
         }
@@ -49,6 +48,13 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     enum FocusTarget { case editor, search }
 
     static let defaultSize = NSSize(width: 480, height: 300)
+    /// The width of the list of notes.
+    static let listWidth: CGFloat = 220
+    /// The list together with the line that separates it from the text.
+    private static let sidebarExtent: CGFloat = listWidth + 1
+    private static let minimumSize = NSSize(width: 360, height: 200)
+    /// The stored frame is that of the window without the list, so that showing or hiding
+    /// the list never changes the size of the writing area.
     private static let frameKey = "capturePanelFrame"
 
     let panel = CapturePanel()
@@ -56,6 +62,8 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
 
     private let defaults: UserDefaults
     private var isPlacing = false
+    private var sidebarVisible = false
+    private var focusRequest = 0
 
     init(rootView: some View, defaults: UserDefaults = .standard, keyHandler: @escaping @MainActor (NSEvent) -> Bool) {
         self.defaults = defaults
@@ -78,10 +86,25 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     var isVisible: Bool { panel.isVisible }
     var hasFocus: Bool { panel.isVisible && panel.isKeyWindow }
 
-    func show(focusing target: FocusTarget) {
-        if !panel.isVisible { place() }
+    func show(focusing target: FocusTarget, sidebarVisible: Bool) {
+        if !panel.isVisible {
+            self.sidebarVisible = sidebarVisible
+            place()
+        }
         panel.makeKeyAndOrderFront(nil)
         focus(target)
+    }
+
+    /// Makes room for the list to the right of the text, or takes that room away again.
+    func setSidebarVisible(_ visible: Bool) {
+        guard visible != sidebarVisible else { return }
+        sidebarVisible = visible
+        guard panel.isVisible else { return }
+        isPlacing = true
+        defer { isPlacing = false }
+        var frame = panel.frame
+        frame.size.width += visible ? Self.sidebarExtent : -Self.sidebarExtent
+        apply(frame)
     }
 
     func hide() {
@@ -89,11 +112,18 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     }
 
     /// Puts the insertion point in the text field. SwiftUI's own focus handling is not
-    /// dependable the first time a view appears in a panel, so this goes straight to AppKit,
-    /// once now and once after SwiftUI has had a chance to build the view.
+    /// dependable the first time a view appears in a panel, so this goes straight to AppKit:
+    /// now, and again once SwiftUI has had a chance to build a view that was just added.
     func focus(_ target: FocusTarget) {
+        focusRequest += 1
+        let request = focusRequest
         applyFocus(target)
-        DispatchQueue.main.async { [weak self] in self?.applyFocus(target) }
+        for delay in [0, 0.05, 0.15] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self, self.focusRequest == request else { return }
+                self.applyFocus(target)
+            }
+        }
     }
 
     private func applyFocus(_ target: FocusTarget) {
@@ -120,28 +150,49 @@ final class CapturePanelController: NSObject, NSWindowDelegate {
     private func place() {
         isPlacing = true
         defer { isPlacing = false }
+        var frame = savedFrame() ?? defaultFrame()
+        if sidebarVisible { frame.size.width += Self.sidebarExtent }
+        apply(frame)
+    }
 
-        if let saved = defaults.string(forKey: Self.frameKey) {
-            let frame = NSRectFromString(saved)
-            if frame.width >= panel.minSize.width, frame.height >= panel.minSize.height,
-               NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) }) {
-                panel.setFrame(frame, display: false)
-                return
-            }
-        }
+    private func savedFrame() -> NSRect? {
+        guard let saved = defaults.string(forKey: Self.frameKey) else { return nil }
+        let frame = NSRectFromString(saved)
+        guard frame.width >= Self.minimumSize.width, frame.height >= Self.minimumSize.height,
+              NSScreen.screens.contains(where: { $0.visibleFrame.intersects(frame) })
+        else { return nil }
+        return frame
+    }
+
+    private func defaultFrame() -> NSRect {
         let pointer = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return }
+        let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let size = Self.defaultSize
-        let origin = NSPoint(
+        return NSRect(
             x: visible.midX - size.width / 2,
-            y: visible.maxY - size.height - visible.height * 0.18)
-        panel.setFrame(NSRect(origin: origin, size: size), display: false)
+            y: visible.maxY - size.height - visible.height * 0.18,
+            width: size.width, height: size.height)
+    }
+
+    /// Sets the frame, moved left if needed so the right edge stays on its screen.
+    private func apply(_ proposed: NSRect) {
+        var frame = proposed
+        let screen = NSScreen.screens.first { $0.visibleFrame.intersects(frame) } ?? NSScreen.main
+        if let visible = screen?.visibleFrame, frame.maxX > visible.maxX {
+            frame.origin.x = max(visible.minX, visible.maxX - frame.width)
+        }
+        panel.minSize = NSSize(
+            width: Self.minimumSize.width + (sidebarVisible ? Self.sidebarExtent : 0),
+            height: Self.minimumSize.height)
+        panel.setFrame(frame, display: panel.isVisible)
     }
 
     private func rememberFrame() {
         guard !isPlacing, panel.isVisible else { return }
-        defaults.set(NSStringFromRect(panel.frame), forKey: Self.frameKey)
+        var frame = panel.frame
+        if sidebarVisible { frame.size.width -= Self.sidebarExtent }
+        defaults.set(NSStringFromRect(frame), forKey: Self.frameKey)
     }
 
     func windowDidMove(_ notification: Notification) { rememberFrame() }

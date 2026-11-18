@@ -2,7 +2,7 @@ import JotCore
 import SwiftUI
 
 struct SettingsView: View {
-    let model: AppModel
+    @Bindable var model: AppModel
     @State private var opensAtLogin = LoginItem.isEnabled
     @State private var loginItemFailed = false
     @State private var isConfirmingClear = false
@@ -31,6 +31,7 @@ struct SettingsView: View {
                             opensAtLogin = LoginItem.isEnabled
                         }
                     }
+                Toggle(L("settings.list.label"), isOn: $model.showsListOnOpen)
                 if loginItemFailed {
                     Text(L("settings.login.failed"))
                         .font(.callout)

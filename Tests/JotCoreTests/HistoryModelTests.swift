@@ -179,6 +179,20 @@ import Testing
         #expect(store.notes.count == 2)
     }
 
+    @Test func focusSearchSelectsTheFirstMatchAndKeepsTheQuery() {
+        let history = makeHistory()
+        history.query = "a"
+        history.moveSelection(by: 1)
+        history.moveSelection(by: 1)
+        #expect(history.focus == .list)
+
+        history.focusSearch()
+
+        #expect(history.focus == .search)
+        #expect(history.query == "a")
+        #expect(history.selectedID == history.results.first?.id)
+    }
+
     @Test func emptyHistoryHasNoSelection() throws {
         try store.deleteAll()
         let history = makeHistory()
